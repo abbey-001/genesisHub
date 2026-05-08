@@ -1,0 +1,369 @@
+/**
+ * Search Suggestions Styling
+ * Matches Zeomart design system
+ */
+
+/* Suggestion Box Container */
+.search-suggestions {
+    background-color: #ffffff;
+    border: 1px solid #eaeaea;
+    border-top: none;
+    border-radius: 0 0 6px 6px;
+    box-shadow: 0px 10px 50px rgba(4, 30, 66, 0.05);
+    display: none;
+    max-height: 400px;
+    overflow-y: auto;
+    position: absolute;
+    top: 50px;
+    left: 0;
+    width: 100%;
+    z-index: 999;
+    transition: all 0.3s ease;
+}
+
+.search-suggestions.show {
+    display: block;
+}
+
+/* Suggestion List */
+.search-suggestions .box-suggestions {
+    padding: 0;
+}
+
+.search-suggestions .box-suggestions ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.search-suggestions .box-suggestions ul li {
+    border-bottom: 1px solid #f3f5f6;
+    margin: 0;
+    padding: 0;
+    transition: background-color 0.2s ease;
+}
+
+.search-suggestions .box-suggestions ul li:last-child {
+    border-bottom: none;
+}
+
+.search-suggestions .box-suggestions ul li:hover,
+.search-suggestions .box-suggestions ul li.selected {
+    background-color: #f3f5f6;
+}
+
+.search-suggestions .box-suggestions ul li a {
+    color: #041e42;
+    display: block;
+    padding: 12px 20px;
+    text-decoration: none;
+    transition: all 0.2s ease;
+}
+
+.search-suggestions .box-suggestions ul li a:hover {
+    color: #443297;
+}
+
+/* Product Suggestion with Image */
+.suggestion-product {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.suggestion-img {
+    width: 50px;
+    height: 50px;
+    object-fit: contain;
+    border-radius: 4px;
+    flex-shrink: 0;
+}
+
+.suggestion-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.suggestion-text {
+    color: #041e42;
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 1.4;
+    margin-bottom: 4px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.suggestion-text strong {
+    color: #443297;
+    font-weight: 600;
+}
+
+.suggestion-price {
+    color: #443297;
+    font-size: 13px;
+    font-weight: 500;
+}
+
+/* Text-Only Suggestion */
+.suggestion-text-only {
+    align-items: center;
+    display: flex;
+    font-size: 14px;
+    gap: 10px;
+    line-height: 1.4;
+}
+
+.suggestion-text-only i {
+    color: #626974;
+    font-size: 12px;
+    width: 14px;
+    flex-shrink: 0;
+}
+
+.suggestion-text-only strong {
+    color: #443297;
+    font-weight: 600;
+}
+
+/* Suggestion Content with Type Label */
+.suggestion-content {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.suggestion-main {
+    font-weight: 500;
+    color: #041e42;
+}
+
+.suggestion-main strong {
+    color: #443297;
+    font-weight: 600;
+}
+
+.suggestion-type {
+    font-size: 11px;
+    color: #999;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Count Badge */
+.suggestion-count {
+    font-size: 12px;
+    color: #626974;
+    margin-left: auto;
+    white-space: nowrap;
+    padding-left: 10px;
+}
+
+/* Special States */
+.suggestion-item.loading,
+.suggestion-item.no-results,
+.suggestion-item.error {
+    color: #626974;
+    font-size: 13px;
+    padding: 15px 20px;
+    text-align: center;
+}
+
+.suggestion-item.loading i {
+    color: #443297;
+    margin-right: 8px;
+}
+
+.suggestion-item.error {
+    color: #e95050;
+}
+
+/* Scrollbar Styling */
+.search-suggestions::-webkit-scrollbar {
+    width: 6px;
+}
+
+.search-suggestions::-webkit-scrollbar-track {
+    background: #f3f5f6;
+    border-radius: 0 0 6px 0;
+}
+
+.search-suggestions::-webkit-scrollbar-thumb {
+    background: #dedede;
+    border-radius: 3px;
+}
+
+.search-suggestions::-webkit-scrollbar-thumb:hover {
+    background: #c4c4c4;
+}
+
+/* Mobile Adjustments */
+@media (max-width: 767px) {
+    .search-suggestions {
+        border-radius: 0 0 6px 6px;
+        max-height: 300px;
+        top: 50px;
+    }
+
+    .suggestion-product {
+        gap: 12px;
+    }
+
+    .suggestion-img {
+        width: 40px;
+        height: 40px;
+    }
+
+    .suggestion-text,
+    .suggestion-text-only {
+        font-size: 13px;
+    }
+
+    .search-suggestions .box-suggestions ul li a {
+        padding: 10px 15px;
+    }
+}
+
+/* Animation for appearance */
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.search-suggestions.show {
+    animation: slideDown 0.2s ease;
+}
+
+/* Focus State Enhancement */
+.top-search form.form-search .box-search input:focus {
+    border-color: #041e42;
+    outline: none;
+}
+
+/* Loading Spinner Animation */
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.suggestion-item.loading i.fa-spin {
+    animation: spin 1s linear infinite;
+}
+
+/* Highlight Effect on Hover */
+.search-suggestions .box-suggestions ul li a:active {
+    background-color: #e8eef2;
+}
+
+/* Typography Refinements */
+.suggestion-text,
+.suggestion-text-only {
+    font-family: "Jost", sans-serif;
+    letter-spacing: 0.01em;
+}
+
+/* Responsive Width Adjustments */
+.header_middle_advnc_search .search-suggestions {
+    width: 525px;
+}
+
+.header_middle_advnc_search.home4_style .search-suggestions {
+    width: 416px;
+}
+
+.header_middle_advnc_search.home6_style .search-suggestions {
+    width: 325px;
+}
+
+.header_middle_advnc_search.home7_style .search-suggestions {
+    width: 380px;
+}
+
+@media (max-width: 991px) {
+    .header_middle_advnc_search .search-suggestions {
+        width: 100%;
+    }
+}
+
+/* Dark Mode Support (if applicable) */
+@media (prefers-color-scheme: dark) {
+    .search-suggestions {
+        background-color: #1a1a1a;
+        border-color: #333;
+    }
+
+    .search-suggestions .box-suggestions ul li {
+        border-color: #2a2a2a;
+    }
+
+    .search-suggestions .box-suggestions ul li:hover,
+    .search-suggestions .box-suggestions ul li.selected {
+        background-color: #2a2a2a;
+    }
+
+    .suggestion-text,
+    .suggestion-text-only,
+    .search-suggestions .box-suggestions ul li a {
+        color: #e0e0e0;
+    }
+}
+
+/* Brand Suggestion with Logo */
+.suggestion-text-only.suggestion-brand {
+    gap: 12px;
+    align-items: center;
+}
+
+.suggestion-brand-logo {
+    width: 40px;
+    height: 40px;
+    object-fit: contain;
+    border-radius: 4px;
+    flex-shrink: 0;
+    background-color: #f9f9f9;
+    padding: 4px;
+    border: 1px solid #f0f0f0;
+}
+
+.suggestion-brand .suggestion-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.suggestion-brand .suggestion-main {
+    font-weight: 600;
+    color: #041e42;
+    display: block;
+}
+
+.suggestion-brand .suggestion-type {
+    font-size: 11px;
+    color: #999;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    display: block;
+    margin-top: 2px;
+}
+
+/* Mobile adjustments for brand logo */
+@media (max-width: 767px) {
+    .suggestion-brand-logo {
+        width: 36px;
+        height: 36px;
+    }
+
+    .suggestion-text-only.suggestion-brand {
+        gap: 10px;
+    }
+}
