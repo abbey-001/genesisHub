@@ -19,7 +19,7 @@ class DashboardService
      */
     public function getMetrics($admin)
     {
-        $role = $admin->role->name;
+        $role = optional($admin->role)->name;
 
         return match($role) {
             'super_admin', 'administrator' => $this->getSuperAdminMetrics(),
@@ -344,7 +344,7 @@ class DashboardService
      */
     public function getPendingActions($admin)
     {
-        $role = $admin->role->name;
+        $role = optional($admin->role)->name;
         $actions = [];
 
         // Super Admin / Administrator

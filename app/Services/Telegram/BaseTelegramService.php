@@ -17,8 +17,8 @@ use Illuminate\Support\Facades\Log;
  */
 abstract class BaseTelegramService
 {
-    protected string $token;
-    protected string $apiBase;
+    protected ?string $token = null;
+    protected ?string $apiBase = null;
 
     // ── Core API methods ──────────────────────────────────────────────────────
 
@@ -143,6 +143,14 @@ abstract class BaseTelegramService
 
     protected function post(string $method, array $payload): ?array
     {
+        if (empty($this->token) || empty($this->apiBase)) {
+            Log::warning("Telegram {$method} skipped because bot token is not configured", [
+                'chat_id' => $payload['chat_id'] ?? null,
+            ]);
+
+            return null;
+        }
+
         try {
             $response = Http::timeout(8)->post("{$this->apiBase}/{$method}", $payload);
 

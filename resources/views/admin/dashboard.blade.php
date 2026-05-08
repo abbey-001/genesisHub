@@ -3,10 +3,14 @@
 @section('title', 'Dashboard')
 
 @section('content')
+@php
+    $admin = auth()->guard('admin')->user();
+    $role = $admin?->role;
+@endphp
 <div class="row">
     <div class="col-12">
         <div class="mb-4">
-            <h4 class="mb-0">Welcome back, {{ auth()->guard('admin')->user()->name }}! 👋</h4>
+            <h4 class="mb-0">Welcome back, {{ $admin->name }}!</h4>
             <p class="text-muted">Here's what's happening on your platform today.</p>
         </div>
     </div>
@@ -18,11 +22,13 @@
         <div class="alert alert-primary d-flex align-items-center">
             <i data-lucide="shield" class="me-3 fs-24"></i>
             <div>
-                <strong>Your Role:</strong> {{ auth()->guard('admin')->user()->role_name }}
-                <span class="badge bg-white text-primary ms-2">Level {{ auth()->guard('admin')->user()->role->level }}</span>
+                <strong>Your Role:</strong> {{ $admin->role_name }}
+                @if($role)
+                    <span class="badge bg-white text-primary ms-2">Level {{ $role->level }}</span>
+                @endif
                 <br>
                 <small class="text-muted">
-                    {{ auth()->guard('admin')->user()->role->description }}
+                    {{ $role?->description ?? 'No role has been assigned to this admin account.' }}
                 </small>
             </div>
         </div>
@@ -30,18 +36,22 @@
 </div>
 
 <!-- Include role-specific dashboard -->
-@if(auth()->guard('admin')->user()->hasAnyRole(['super_admin', 'administrator']))
+@if($admin->hasAnyRole(['super_admin', 'administrator']))
     @include('admin.partials.dashboards.super-admin', ['metrics' => $metrics])
-@elseif(auth()->guard('admin')->user()->hasRole('finance_manager'))
+@elseif($admin->hasRole('finance_manager'))
     @include('admin.partials.dashboards.finance-manager', ['metrics' => $metrics])
-@elseif(auth()->guard('admin')->user()->hasRole('operations_manager'))
+@elseif($admin->hasRole('operations_manager'))
     @include('admin.partials.dashboards.operations-manager', ['metrics' => $metrics])
-@elseif(auth()->guard('admin')->user()->hasRole('content_manager'))
+@elseif($admin->hasRole('content_manager'))
     @include('admin.partials.dashboards.content-manager', ['metrics' => $metrics])
-@elseif(auth()->guard('admin')->user()->hasRole('support_agent'))
+@elseif($admin->hasRole('support_agent'))
     @include('admin.partials.dashboards.support-agent', ['metrics' => $metrics])
-@elseif(auth()->guard('admin')->user()->hasRole('analyst'))
+@elseif($admin->hasRole('analyst'))
     @include('admin.partials.dashboards.analyst', ['metrics' => $metrics])
+@else
+    <div class="alert alert-warning">
+        This admin account does not have a dashboard role assigned.
+    </div>
 @endif
 
 <!-- Pending Actions -->
@@ -63,7 +73,16 @@
                             <div class="d-flex align-items-center">
                                 <div class="flex-shrink-0">
                                     <div class="avatar-sm bg-warning bg-opacity-10 rounded">
-                                    <i data-lucide="{{ getActionIcon($action) }}" class="text-warning fs-20"></i>
+                                    <i data-lucide="{{ match($action) {
+                                        'seller_applications' => 'user-plus',
+                                        'rider_applications' => 'bike',
+                                        'pending_payouts' => 'wallet',
+                                        'failed_deliveries' => 'alert-triangle',
+                                        'pending_products' => 'package',
+                                        'processing_payouts' => 'credit-card',
+                                        'pending_deliveries' => 'truck',
+                                        default => 'alert-circle'
+                                    } }}" class="text-warning fs-20"></i>
                                     </div>
                                 </div>
                                 <div class="flex-grow-1 ms-3">
@@ -91,7 +110,7 @@
                     <i data-lucide="shopping-cart" class="me-2"></i>
                     Recent Orders
                 </h5>
-                @if(auth()->guard('admin')->user()->hasPermission('orders.view'))
+                @if($admin->hasPermission('orders.view'))
                 <a href="#" class="btn btn-sm btn-primary">
                     View All <i data-lucide="arrow-right" class="ms-1"></i>
                 </a>
@@ -160,18 +179,3 @@
     }, 30000); // 30 seconds
 </script>
 @endpush
-
-@php
-function getActionIcon($action) {
-    return match($action) {
-        'seller_applications' => 'user-plus',
-        'rider_applications' => 'bike',
-        'pending_payouts' => 'wallet',
-        'failed_deliveries' => 'alert-triangle',
-        'pending_products' => 'package',
-        'processing_payouts' => 'credit-card',
-        'pending_deliveries' => 'truck',
-        default => 'alert-circle'
-    };
-}
-@endphp

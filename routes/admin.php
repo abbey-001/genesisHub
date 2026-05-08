@@ -151,32 +151,32 @@ Route::prefix('reports')->name('reports.')->group(function () {
     // Main Analytics Dashboard
     Route::get('/', [ReportController::class, 'index'])
         ->name('index')
-        ->middleware('permission:reports.view');
+        ->middleware('permission:analytics.view');
     
     // Revenue Analytics
     Route::get('/revenue', [ReportController::class, 'revenue'])
         ->name('revenue')
-        ->middleware('permission:reports.view');
+        ->middleware('permission:analytics.view');
     
     // Sales Analytics
     Route::get('/sales', [ReportController::class, 'sales'])
         ->name('sales')
-        ->middleware('permission:reports.view');
+        ->middleware('permission:analytics.view');
     
     // User Analytics
     Route::get('/users', [ReportController::class, 'users'])
         ->name('users')
-        ->middleware('permission:reports.view');
+        ->middleware('permission:analytics.view');
     
     // Delivery Analytics
     Route::get('/deliveries', [ReportController::class, 'deliveries'])
         ->name('deliveries')
-        ->middleware('permission:reports.view');
+        ->middleware('permission:analytics.view');
     
     // Product Analytics
     Route::get('/products', [ReportController::class, 'products'])
         ->name('products')
-        ->middleware('permission:reports.view');
+        ->middleware('permission:analytics.view');
     
     // Commission Analytics
     Route::get('/commission', [ReportController::class, 'commission'])
@@ -191,21 +191,21 @@ Route::prefix('reports')->name('reports.')->group(function () {
     // Custom Report Builder
     Route::get('/custom', [ReportController::class, 'custom'])
         ->name('custom')
-        ->middleware('permission:reports.custom');
+        ->middleware('permission:reports.generate');
     
     Route::post('/custom/generate', [ReportController::class, 'generateCustom'])
         ->name('custom.generate')
-        ->middleware('permission:reports.custom');
+        ->middleware('permission:reports.generate');
     
     // Schedule Report
     Route::post('/schedule', [ReportController::class, 'schedule'])
         ->name('schedule')
-        ->middleware('permission:reports.schedule');
+        ->middleware('permission:reports.generate');
     
     // AJAX: Get Chart Data
     Route::get('/chart-data', [ReportController::class, 'chartData'])
         ->name('chart-data')
-        ->middleware('permission:reports.view');
+        ->middleware('permission:analytics.view');
 });
 
 

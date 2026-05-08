@@ -21,6 +21,7 @@ class DashboardController extends Controller
     public function index()
     {
         $admin = auth()->guard('admin')->user();
+        $admin->loadMissing('role');
         
         // Get role-specific metrics
         $metrics = $this->dashboardService->getMetrics($admin);
@@ -71,6 +72,7 @@ class DashboardController extends Controller
     public function refresh()
     {
         $admin = auth()->guard('admin')->user();
+        $admin->loadMissing('role');
         
         $metrics = $this->dashboardService->getMetrics($admin);
         $pendingActions = $this->dashboardService->getPendingActions($admin);

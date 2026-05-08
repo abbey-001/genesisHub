@@ -22,7 +22,7 @@ class SellerTelegramService extends BaseTelegramService
     public function __construct()
     {
         $this->token   = config('services.telegram.seller_bot_token');
-        $this->apiBase = "https://api.telegram.org/bot{$this->token}";
+        $this->apiBase = $this->token ? "https://api.telegram.org/bot{$this->token}" : null;
     }
 
     // =========================================================================
