@@ -3,12 +3,14 @@
 namespace App\Services\Telegram;
 
 use App\Models\Admin;
+use App\Models\Delivery;
+use App\Models\DeliveryPayout;
 use App\Models\Order;
 use App\Models\Payout;
 use App\Models\Review;
+use App\Models\Rider;
 use App\Models\Seller;
 use App\Models\OrderItem;
-use Illuminate\Support\Collection;
 
 /**
  * Admin Bot — message builders and push notification helpers.
@@ -40,15 +42,46 @@ class AdminTelegramService extends BaseTelegramService
      *
      * @param string $notifyColumn  e.g. 'telegram_notify_payouts'
      */
-    public function broadcast(string $notifyColumn, string $text, array $markup = []): void
+    public function broadcast(string $notifyColumn, string $text, array $markup = [], array $requiredPermissions = []): void
     {
         $admins = Admin::whereNotNull('telegram_chat_id')
+            ->where('is_active', true)
             ->where($notifyColumn, true)
+            ->with('role.permissions')
             ->get();
 
         foreach ($admins as $admin) {
+            if (! $this->adminCanReceive($admin, $notifyColumn, $requiredPermissions)) {
+                continue;
+            }
+
             $this->sendMessage($admin->telegram_chat_id, $text, $markup);
         }
+    }
+
+    protected function adminCanReceive(Admin $admin, string $notifyColumn, array $requiredPermissions = []): bool
+    {
+        if ($admin->isSuperAdmin()) {
+            return true;
+        }
+
+        $permissions = $requiredPermissions ?: $this->permissionsForColumn($notifyColumn);
+
+        return empty($permissions) || $admin->hasAnyPermission($permissions);
+    }
+
+    protected function permissionsForColumn(string $notifyColumn): array
+    {
+        return match ($notifyColumn) {
+            'telegram_notify_orders' => ['orders.view', 'orders.edit', 'orders.cancel'],
+            'telegram_notify_payouts' => ['finance.view', 'payouts.view', 'payouts.approve', 'payouts.process', 'orders.refund'],
+            'telegram_notify_sellers' => ['sellers.view', 'sellers.approve', 'sellers.suspend'],
+            'telegram_notify_reviews' => ['products.view', 'products.edit', 'support.view'],
+            'telegram_notify_deliveries' => ['deliveries.view', 'deliveries.assign', 'deliveries.manage', 'deliveries.track'],
+            'telegram_notify_riders' => ['riders.view', 'riders.approve', 'riders.suspend', 'deliveries.view'],
+            'telegram_notify_system' => ['dashboard.view', 'dashboard.analytics'],
+            default => [],
+        };
     }
 
     // =========================================================================
@@ -126,6 +159,24 @@ class AdminTelegramService extends BaseTelegramService
         $this->broadcast('telegram_notify_orders', $text, $markup);
     }
 
+    public function notifyPaymentFailure(Order $order, string $gateway, string $reason = ''): void
+    {
+        $text = "Payment failure needs review\n\n"
+              . "Order: #{$order->order_number}\n"
+              . "Customer: {$this->e($order->customer_name)}\n"
+              . "Gateway: {$this->e($gateway)}\n"
+              . "Total: {$this->naira($order->total)}"
+              . ($reason ? "\nReason: {$this->e($this->truncate($reason, 160))}" : '');
+
+        $markup = [
+            'inline_keyboard' => [[
+                $this->urlButton('View Order', url("/admin/orders/{$order->id}")),
+            ]],
+        ];
+
+        $this->broadcast('telegram_notify_orders', $text, $markup);
+    }
+
     // =========================================================================
     // PAYOUT NOTIFICATIONS
     // =========================================================================
@@ -188,6 +239,41 @@ class AdminTelegramService extends BaseTelegramService
         $this->broadcast('telegram_notify_payouts', $text, $markup);
     }
 
+    public function notifyPayoutProcessingStale(Payout $payout, int $hours): void
+    {
+        $seller = $payout->seller;
+
+        $text = "Payout still processing\n\n"
+              . "Payout: #{$payout->id}\n"
+              . "Seller: {$this->e($seller?->user?->name ?? 'N/A')}\n"
+              . "Amount: {$this->naira($payout->amount)}\n"
+              . "Processing for: {$hours} hours";
+
+        $markup = [
+            'inline_keyboard' => [[
+                $this->urlButton('Open Payout', url("/admin/finance/payouts/{$payout->id}")),
+            ]],
+        ];
+
+        $this->broadcast('telegram_notify_payouts', $text, $markup);
+    }
+
+    public function notifySellerWalletNegative(Seller $seller, float $balance): void
+    {
+        $text = "Seller wallet is negative\n\n"
+              . "Seller: {$this->e($seller->user?->name ?? 'N/A')}\n"
+              . "Shop: {$this->e($seller->shop?->shop_name ?? 'N/A')}\n"
+              . "Balance: {$this->naira($balance)}";
+
+        $markup = [
+            'inline_keyboard' => [[
+                $this->urlButton('Review Wallet', url("/admin/sellers/{$seller->id}/wallet")),
+            ]],
+        ];
+
+        $this->broadcast('telegram_notify_payouts', $text, $markup);
+    }
+
     // =========================================================================
     // SELLER MANAGEMENT NOTIFICATIONS
     // =========================================================================
@@ -231,6 +317,25 @@ class AdminTelegramService extends BaseTelegramService
         $this->broadcast('telegram_notify_sellers', $text);
     }
 
+    public function notifyNewRiderApplication(Rider $rider): void
+    {
+        $text = "New rider application\n\n"
+              . "Name: {$this->e($rider->full_name)}\n"
+              . "Email: {$this->e($rider->user?->email ?? 'N/A')}\n"
+              . "Phone: {$this->e($rider->phone_number ?? 'N/A')}\n"
+              . "Vehicle: {$this->e($rider->vehicle_type ?? 'N/A')}\n"
+              . "Applied: {$rider->created_at->format('d M Y, g:ia')}";
+
+        $markup = [
+            'inline_keyboard' => [[
+                $this->urlButton('Review Rider', url("/admin/riders/{$rider->id}")),
+                $this->urlButton('Applications', url('/admin/riders/applications')),
+            ]],
+        ];
+
+        $this->broadcast('telegram_notify_riders', $text, $markup);
+    }
+
     // =========================================================================
     // REVIEW MODERATION NOTIFICATIONS
     // =========================================================================
@@ -269,6 +374,10 @@ class AdminTelegramService extends BaseTelegramService
         ];
 
         $this->broadcast('telegram_notify_reviews', $text, $markup);
+
+        if ((int) $review->rating <= 2 && $review->is_verified_purchase) {
+            $this->notifyLowRatingReview($review);
+        }
     }
 
     protected function notifyReviewQueueBuilding(int $count): void
@@ -286,6 +395,23 @@ class AdminTelegramService extends BaseTelegramService
         $markup = [
             'inline_keyboard' => [[
                 $this->urlButton('📋 Review Queue', url('/admin/reviews?status=pending')),
+            ]],
+        ];
+
+        $this->broadcast('telegram_notify_reviews', $text, $markup);
+    }
+
+    public function notifyLowRatingReview(Review $review): void
+    {
+        $text = "Low-rating verified review\n\n"
+              . "Product: {$this->e($review->product->name ?? 'N/A')}\n"
+              . "Rating: {$review->rating}/5\n"
+              . "Customer: {$this->e($review->user?->name ?? 'N/A')}\n"
+              . "Comment: " . ($review->comment ? $this->truncate($this->e($review->comment), 160) : 'No comment');
+
+        $markup = [
+            'inline_keyboard' => [[
+                $this->urlButton('Moderate Review', url("/admin/reviews/{$review->id}")),
             ]],
         ];
 
@@ -314,7 +440,105 @@ class AdminTelegramService extends BaseTelegramService
             ]],
         ];
 
-        $this->broadcast('telegram_notify_payouts', $text, $markup);
+        $this->broadcast('telegram_notify_payouts', $text, $markup, ['orders.refund', 'finance.view']);
+    }
+
+    public function notifyRefundProcessingFailed(Order $order, string $reason): void
+    {
+        $text = "Refund processing failed\n\n"
+              . "Order: #{$order->order_number}\n"
+              . "Customer: {$this->e($order->customer_name)}\n"
+              . "Amount: {$this->naira($order->total)}\n"
+              . "Reason: {$this->e($this->truncate($reason, 180))}";
+
+        $markup = [
+            'inline_keyboard' => [[
+                $this->urlButton('Review Refund', url("/admin/finance/refunds/{$order->id}")),
+            ]],
+        ];
+
+        $this->broadcast('telegram_notify_payouts', $text, $markup, ['orders.refund', 'finance.view']);
+    }
+
+    // =========================================================================
+    // DELIVERY / RIDER OPERATIONS
+    // =========================================================================
+
+    public function notifyDeliveryAssignmentFailed(Delivery $delivery): void
+    {
+        $delivery->loadMissing('order', 'seller.shop');
+
+        $text = "Manual rider assignment needed\n\n"
+              . "Delivery: #{$delivery->id}\n"
+              . "Order: #{$delivery->order?->order_number}\n"
+              . "Seller: {$this->e($delivery->seller?->shop?->shop_name ?? 'N/A')}\n"
+              . "Delivery address: {$this->e($this->truncate($delivery->delivery_address ?? 'N/A', 140))}";
+
+        $markup = [
+            'inline_keyboard' => [[
+                $this->urlButton('Assign Rider', url('/admin/deliveries/unassigned')),
+            ]],
+        ];
+
+        $this->broadcast('telegram_notify_deliveries', $text, $markup, ['deliveries.assign', 'deliveries.manage']);
+    }
+
+    public function notifyDeliveryUnassignedTooLong(Delivery $delivery, int $hours): void
+    {
+        $delivery->loadMissing('order', 'seller.shop');
+
+        $text = "Delivery unassigned too long\n\n"
+              . "Delivery: #{$delivery->id}\n"
+              . "Order: #{$delivery->order?->order_number}\n"
+              . "Waiting: {$hours} hours\n"
+              . "Seller: {$this->e($delivery->seller?->shop?->shop_name ?? 'N/A')}";
+
+        $markup = [
+            'inline_keyboard' => [[
+                $this->urlButton('Assign Rider', url("/admin/deliveries/{$delivery->id}/assign")),
+            ]],
+        ];
+
+        $this->broadcast('telegram_notify_deliveries', $text, $markup, ['deliveries.assign', 'deliveries.manage']);
+    }
+
+    public function notifyDeliveryFailed(Delivery $delivery, string $reason = ''): void
+    {
+        $delivery->loadMissing('order', 'rider', 'seller.shop');
+
+        $text = "Delivery failed\n\n"
+              . "Delivery: #{$delivery->id}\n"
+              . "Order: #{$delivery->order?->order_number}\n"
+              . "Rider: {$this->e($delivery->rider?->full_name ?? 'Unassigned')}\n"
+              . "Reason: {$this->e($this->truncate($reason ?: ($delivery->failure_reason ?? 'N/A'), 160))}";
+
+        $markup = [
+            'inline_keyboard' => [[
+                $this->urlButton('Review Delivery', url("/admin/deliveries/{$delivery->id}")),
+            ]],
+        ];
+
+        $this->broadcast('telegram_notify_deliveries', $text, $markup);
+    }
+
+    public function notifyNewRiderPayoutRequest(DeliveryPayout $payout): void
+    {
+        $payout->loadMissing('company.user');
+
+        $text = "New delivery payout request\n\n"
+              . "Reference: {$this->e($payout->reference_number)}\n"
+              . "Rider/company: {$this->e($payout->company?->full_name ?? 'N/A')}\n"
+              . "Amount: {$this->naira($payout->amount)}\n"
+              . "Deliveries: {$payout->deliveries_count}";
+
+        $markup = [
+            'inline_keyboard' => [[
+                $this->urlButton('Review Payout', url("/admin/delivery/payouts/{$payout->id}")),
+                $this->urlButton('Queue', url('/admin/delivery/payouts?status=pending')),
+            ]],
+        ];
+
+        $this->broadcast('telegram_notify_payouts', $text, $markup, ['payouts.view', 'payouts.approve', 'finance.view']);
     }
 
     // =========================================================================

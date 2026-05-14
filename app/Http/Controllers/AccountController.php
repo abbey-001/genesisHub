@@ -348,6 +348,15 @@ public function cancelOrder($id)
                         'refund_reference'=> $refundResult['refund_reference'] ?? null,
                     ]);
 
+                    try {
+                        app(\App\Services\Telegram\AdminTelegramService::class)->notifyRefundRequest($order);
+                    } catch (\Exception $e) {
+                        \Log::warning('Admin Telegram refund request alert failed', [
+                            'order_id' => $order->id,
+                            'error'    => $e->getMessage(),
+                        ]);
+                    }
+
                     \Log::info('Refund initiated for cancelled order', [
                         'order_id'         => $order->id,
                         'refund_reference' => $refundResult['refund_reference'] ?? null,
@@ -529,7 +538,18 @@ public function cancelOrder($id)
             'comment' => $validated['comment'],
             'is_verified_purchase' => true,
             'is_approved' => false, // Requires admin approval
+            'status' => 'pending',
         ]);
+
+        try {
+            app(\App\Services\Telegram\AdminTelegramService::class)
+                ->notifyNewReviewPending($review->loadMissing(['product.shop', 'user']));
+        } catch (\Exception $e) {
+            \Log::warning('Admin Telegram review alert failed', [
+                'review_id' => $review->id,
+                'error'     => $e->getMessage(),
+            ]);
+        }
 
         return response()->json([
             'success' => true,

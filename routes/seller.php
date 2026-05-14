@@ -9,6 +9,7 @@ use App\Http\Controllers\Seller\ShopController;
 use App\Http\Controllers\Seller\ReviewController;
 use App\Http\Controllers\Seller\SettingsController;
 use App\Http\Controllers\Seller\SellerTelegramController;
+use App\Http\Controllers\Seller\SellerAccountSecurityController;
 use App\Models\Subcategory;
 use App\Http\Controllers\Seller\CouponController;
 

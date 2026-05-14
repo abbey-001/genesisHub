@@ -17,6 +17,7 @@ use App\Http\Controllers\Admin\RefundController;
 use App\Http\Controllers\Admin\FinancialReportController;
 use App\Http\Controllers\Admin\CompanyController;
 use App\Http\Controllers\Admin\DeliveryPayoutController;
+use App\Http\Controllers\Admin\AdminTelegramController;
 
 
 /*
@@ -363,6 +364,7 @@ Route::prefix('reviews')->name('reviews.')->group(function () {
 
  Route::prefix('settings/telegram')->name('admin.telegram.')->group(function () {
         Route::get('/',                     [AdminTelegramController::class, 'index'])->name('index');
+        Route::post('/invite/{admin}',      [AdminTelegramController::class, 'invite'])->name('invite');
         Route::post('/register/{admin}',    [AdminTelegramController::class, 'register'])->name('register');
         Route::delete('/unregister/{admin}',[AdminTelegramController::class, 'unregister'])->name('unregister');
         Route::post('/test/{admin}',        [AdminTelegramController::class, 'sendTest'])->name('test');

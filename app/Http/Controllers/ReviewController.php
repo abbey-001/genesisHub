@@ -128,8 +128,15 @@ class ReviewController extends Controller
             
             DB::commit();
             
-            // Notify admin (uncomment when event is created)
-            // event(new ReviewSubmitted($review));
+            try {
+                app(\App\Services\Telegram\AdminTelegramService::class)
+                    ->notifyNewReviewPending($review->loadMissing(['product.shop', 'user']));
+            } catch (\Exception $e) {
+                Log::warning('Admin Telegram review alert failed', [
+                    'review_id' => $review->id,
+                    'error'     => $e->getMessage(),
+                ]);
+            }
             
             Log::info('Review submitted successfully', [
                 'review_id' => $review->id,

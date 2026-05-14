@@ -53,6 +53,19 @@ class SellerAccountSecurityController extends Controller
             'reactivation_deadline' => now()->addDays(30),
         ]);
 
+        try {
+            $seller = $user->seller;
+            if ($seller) {
+                app(\App\Services\Telegram\AdminTelegramService::class)
+                    ->notifySellerSelfDeactivated($seller->loadMissing(['user', 'shop']));
+            }
+        } catch (\Exception $e) {
+            \Log::warning('Admin Telegram seller self-deactivation alert failed', [
+                'user_id' => $user->id,
+                'error'   => $e->getMessage(),
+            ]);
+        }
+
         Auth::guard('seller')->logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();

@@ -7,6 +7,8 @@ use App\Models\Admin;
 use App\Services\Telegram\AdminTelegramService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
 
 /**
  * Admin Telegram registration (manual — no self-service linking).
@@ -42,8 +44,47 @@ class AdminTelegramController extends Controller
         $this->authorizeSuper();
 
         $admins = Admin::with('role')->get();
+        $botUsername = config('services.telegram.admin_bot_username');
 
-        return view('admin.settings.telegram.index', compact('admins'));
+        return view('admin.settings.telegram.index', compact('admins', 'botUsername'));
+    }
+
+    public function invite(Admin $admin): \Illuminate\Http\RedirectResponse
+    {
+        $this->authorizeSuper();
+
+        if (! config('services.telegram.admin_bot_username')) {
+            return back()->with('error', 'TELEGRAM_ADMIN_BOT_USERNAME is not configured.');
+        }
+
+        $token = Str::random(48);
+
+        $admin->update([
+            'telegram_link_token' => $token,
+            'telegram_invited_at' => now(),
+        ]);
+
+        $inviteUrl = $this->inviteUrl($token);
+
+        try {
+            Mail::raw(
+                "Hello {$admin->name},\n\n"
+                . "Use this Telegram invite link to connect your admin notifications:\n{$inviteUrl}\n\n"
+                . "After linking, type /help in Telegram to see available admin commands.",
+                function ($message) use ($admin) {
+                    $message->to($admin->email)
+                        ->subject('Connect your GenesisHub admin Telegram notifications');
+                }
+            );
+
+            return back()
+                ->with('success', "Telegram invite sent to {$admin->email}.")
+                ->with('telegram_invite_url', $inviteUrl);
+        } catch (\Exception $e) {
+            return back()
+                ->with('warning', 'Invite token was created, but email delivery failed: ' . $e->getMessage())
+                ->with('telegram_invite_url', $inviteUrl);
+        }
     }
 
     /**
@@ -131,6 +172,8 @@ class AdminTelegramController extends Controller
             'telegram_notify_payouts' => 'boolean',
             'telegram_notify_sellers' => 'boolean',
             'telegram_notify_reviews' => 'boolean',
+            'telegram_notify_deliveries' => 'boolean',
+            'telegram_notify_riders' => 'boolean',
             'telegram_notify_system'  => 'boolean',
         ]);
 
@@ -139,6 +182,8 @@ class AdminTelegramController extends Controller
             'telegram_notify_payouts' => $request->boolean('telegram_notify_payouts'),
             'telegram_notify_sellers' => $request->boolean('telegram_notify_sellers'),
             'telegram_notify_reviews' => $request->boolean('telegram_notify_reviews'),
+            'telegram_notify_deliveries' => $request->boolean('telegram_notify_deliveries'),
+            'telegram_notify_riders' => $request->boolean('telegram_notify_riders'),
             'telegram_notify_system'  => $request->boolean('telegram_notify_system'),
         ]);
 
@@ -154,5 +199,10 @@ class AdminTelegramController extends Controller
         if (! $admin->isSuperAdmin()) {
             abort(403, 'Only super-admins can manage Telegram registrations.');
         }
+    }
+
+    private function inviteUrl(string $token): string
+    {
+        return 'https://t.me/' . config('services.telegram.admin_bot_username') . '?start=' . $token;
     }
 }

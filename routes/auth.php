@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Auth\SocialLoginController;
 use App\Http\Controllers\Auth\SellerSocialCompleteController;
 use App\Http\Controllers\Auth\PasswordResetController;
-use App\Http\Controllers\Auth\SellerAccountSecurityController;
+use App\Http\Controllers\Seller\SellerAccountSecurityController;
 
 
 // ── Seller password reset ─────────────────────────────────────────────────────

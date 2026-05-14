@@ -124,6 +124,13 @@ class RefundController extends Controller
             );
 
             if (!$paystackResult['success']) {
+                try {
+                    app(\App\Services\Telegram\AdminTelegramService::class)
+                        ->notifyRefundProcessingFailed($order, $paystackResult['message'] ?? 'Gateway declined the refund request.');
+                } catch (\Exception $e) {
+                    Log::warning('Admin Telegram refund failure alert failed', ['order_id' => $order->id]);
+                }
+
                 return back()->with('error',
                     'Paystack refund failed: ' . $paystackResult['message'] .
                     ' — Please try again or process manually.'
@@ -160,6 +167,11 @@ class RefundController extends Controller
 
                 try {
                     $this->walletService->processRefund($order, $sellerId, $sellerRefund);
+                    $seller->load('wallet');
+                    if ($seller->wallet && $seller->wallet->balance < 0) {
+                        app(\App\Services\Telegram\AdminTelegramService::class)
+                            ->notifySellerWalletNegative($seller, (float) $seller->wallet->balance);
+                    }
                 } catch (\Exception $e) {
                     Log::error('Refund: failed to deduct seller wallet', [
                         'order_id'      => $order->id,

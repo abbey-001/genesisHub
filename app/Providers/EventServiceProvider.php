@@ -3,8 +3,10 @@
 namespace App\Providers;
 
 use App\Events\DeliveryCreated;
+use App\Events\RiderAssignmentFailed;
 use App\Events\DeliveryStatusUpdated;
 use App\Events\RiderLocationUpdated;
+use App\Listeners\AlertAdminOnAssignmentFailure;
 use App\Listeners\NotifyRiderOfNewDelivery;
 use App\Listeners\NotifyCustomerOfStatusChange;
 use App\Listeners\UpdateRiderStatistics;

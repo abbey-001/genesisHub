@@ -12,6 +12,16 @@ class AlertAdminOnAssignmentFailure
 {
     public function handle(RiderAssignmentFailed $event)
     {
+        try {
+            app(\App\Services\Telegram\AdminTelegramService::class)
+                ->notifyDeliveryAssignmentFailed($event->delivery);
+        } catch (\Exception $e) {
+            \Log::warning('Admin Telegram assignment failure alert failed', [
+                'delivery_id' => $event->delivery->id,
+                'error'       => $e->getMessage(),
+            ]);
+        }
+
         // Get all admin users
         $admins = User::where('role', 'admin')->get();
         

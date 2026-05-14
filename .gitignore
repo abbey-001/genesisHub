@@ -34,3 +34,4 @@ Thumbs.db
 error_log
 genesis.zip
 .gitignore.backup
+public/index.php

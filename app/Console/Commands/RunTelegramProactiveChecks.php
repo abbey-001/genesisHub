@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Models\Payout;
 use App\Models\Seller;
 use App\Services\Telegram\AdminTelegramService;
 use App\Services\Telegram\SellerTelegramService;
@@ -41,11 +42,68 @@ class RunTelegramProactiveChecks extends Command
     public function handle(): void
     {
         $this->checkStuckOrders();
+        $this->checkStalePayouts();
+        $this->checkUnassignedDeliveries();
         $this->checkDeadlineApproaching();
         $this->checkOverdueItems();
         $this->checkLowStock();
 
         $this->info('✅ Proactive checks complete.');
+    }
+
+    private function checkStalePayouts(): void
+    {
+        $payouts = Payout::where('status', 'processing')
+            ->where('processed_at', '<', now()->subHours(24))
+            ->with('seller.user')
+            ->get();
+
+        foreach ($payouts as $payout) {
+            $cacheKey = "tg_stale_payout_{$payout->id}";
+
+            if (cache()->has($cacheKey)) continue;
+
+            $hours = now()->diffInHours($payout->processed_at ?? $payout->updated_at);
+
+            try {
+                $this->adminTelegram->notifyPayoutProcessingStale($payout, $hours);
+                cache()->put($cacheKey, true, now()->addHours(12));
+                $this->line("  -> Stale payout alert: #{$payout->id}");
+            } catch (\Exception $e) {
+                Log::error('Stale payout Telegram alert failed', [
+                    'payout_id' => $payout->id,
+                    'error'     => $e->getMessage(),
+                ]);
+            }
+        }
+    }
+
+    private function checkUnassignedDeliveries(): void
+    {
+        $deliveries = \App\Models\Delivery::where('status', 'pending')
+            ->whereNull('rider_id')
+            ->where('created_at', '<', now()->subHours(2))
+            ->with(['order', 'seller.shop'])
+            ->get();
+
+        foreach ($deliveries as $delivery) {
+            $cacheKey = "tg_unassigned_delivery_{$delivery->id}";
+
+            if (cache()->has($cacheKey)) continue;
+
+            $hours = now()->diffInHours($delivery->created_at);
+
+            try {
+                $this->adminTelegram->notifyDeliveryUnassignedTooLong($delivery, $hours);
+                cache()->put($cacheKey, true, now()->addHours(6));
+                $this->line("  -> Unassigned delivery alert: #{$delivery->id}");
+            } catch (\Exception $e) {
+                Log::error('Unassigned delivery Telegram alert failed', [
+                    'delivery_id' => $delivery->id,
+                    'error'       => $e->getMessage(),
+                ]);
+            }
+        }
     }
 
     // ─── 1. Stuck orders ─────────────────────────────────────────────────────

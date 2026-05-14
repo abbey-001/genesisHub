@@ -265,6 +265,12 @@ class PaymentController extends Controller
                 $order = Order::where('payment_reference', $reference)->first();
                 if ($order && $order->payment_status !== 'paid') {
                     $order->update(['payment_status' => 'failed', 'status' => 'cancelled']);
+                    try {
+                        app(\App\Services\Telegram\AdminTelegramService::class)
+                            ->notifyPaymentFailure($order, 'paystack', 'Callback verification did not return success');
+                    } catch (\Exception $e) {
+                        Log::warning('Admin Telegram payment failure alert failed', ['order_id' => $order->id]);
+                    }
                 }
                 return redirect()->route('payment.failed')->with('error', 'Payment was not successful.');
             }
@@ -314,6 +320,12 @@ class PaymentController extends Controller
                 $order = Order::where('payment_reference', $reference)->first();
                 if ($order && $order->payment_status !== 'paid') {
                     $order->update(['payment_status' => 'failed', 'status' => 'cancelled']);
+                    try {
+                        app(\App\Services\Telegram\AdminTelegramService::class)
+                            ->notifyPaymentFailure($order, 'flutterwave', 'Callback verification did not return success');
+                    } catch (\Exception $e) {
+                        Log::warning('Admin Telegram payment failure alert failed', ['order_id' => $order->id]);
+                    }
                 }
                 return redirect()->route('payment.failed')->with('error', 'Payment was not successful.');
             }
@@ -460,6 +472,15 @@ class PaymentController extends Controller
 
             $this->deliveryService->initialiseBundles($fresh);
             $this->notifySellers($fresh);
+
+            try {
+                app(\App\Services\Telegram\AdminTelegramService::class)->notifyLargeOrder($fresh);
+            } catch (\Exception $e) {
+                Log::warning('Admin Telegram large order alert failed', [
+                    'order_id' => $fresh->id,
+                    'error'    => $e->getMessage(),
+                ]);
+            }
         });
 
         try {
@@ -532,6 +553,13 @@ class PaymentController extends Controller
         if ($order && $order->payment_status !== 'paid') {
             $order->update(['payment_status' => 'failed', 'status' => 'cancelled']);
             Log::info('Paystack webhook: order marked failed', ['order_id' => $order->id, 'reference' => $reference]);
+
+            try {
+                app(\App\Services\Telegram\AdminTelegramService::class)
+                    ->notifyPaymentFailure($order, 'paystack', 'Webhook charge.failed');
+            } catch (\Exception $e) {
+                Log::warning('Admin Telegram payment failure alert failed', ['order_id' => $order->id]);
+            }
         }
     }
 
@@ -564,6 +592,13 @@ class PaymentController extends Controller
         if ($order && $order->payment_status !== 'paid') {
             $order->update(['payment_status' => 'failed', 'status' => 'cancelled']);
             Log::info('Flutterwave webhook: order marked failed', ['order_id' => $order->id, 'reference' => $reference]);
+
+            try {
+                app(\App\Services\Telegram\AdminTelegramService::class)
+                    ->notifyPaymentFailure($order, 'flutterwave', 'Webhook charge.failed');
+            } catch (\Exception $e) {
+                Log::warning('Admin Telegram payment failure alert failed', ['order_id' => $order->id]);
+            }
         }
     }
 
@@ -619,6 +654,15 @@ class PaymentController extends Controller
                 ]);
 
                 DB::commit();
+
+                try {
+                    app(\App\Services\Telegram\AdminTelegramService::class)->notifyRefundRequest($order);
+                } catch (\Exception $e) {
+                    Log::warning('Admin Telegram refund request alert failed', [
+                        'order_id' => $order->id,
+                        'error'    => $e->getMessage(),
+                    ]);
+                }
 
                 return response()->json([
                     'success' => true,
@@ -720,6 +764,34 @@ class PaymentController extends Controller
                 'message'          => 'Refund API call failed: ' . $e->getMessage(),
             ];
         }
+    }
+
+    public function initiateRefund(string $reference, int $amountKobo = 0, string $reason = ''): array
+    {
+        $order = Order::where('payment_reference', $reference)->first();
+
+        if ($order?->payment_method === 'flutterwave') {
+            $details = is_string($order->payment_details)
+                ? json_decode($order->payment_details, true)
+                : ($order->payment_details ?? []);
+
+            $transactionId = $details['id']
+                ?? $details['transaction_id']
+                ?? $details['flw_ref']
+                ?? null;
+
+            if (! $transactionId) {
+                return [
+                    'success' => false,
+                    'refund_reference' => null,
+                    'message' => 'Flutterwave transaction id is missing for this order.',
+                ];
+            }
+
+            return $this->initiateFlutterwaveRefund((string) $transactionId, $amountKobo, $reason);
+        }
+
+        return $this->initiatePaystackRefund($reference, $amountKobo, $reason);
     }
 
     // =========================================================================

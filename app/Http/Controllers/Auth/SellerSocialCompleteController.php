@@ -145,6 +145,13 @@ class SellerSocialCompleteController extends Controller
         // ── Link shop → seller ────────────────────────────────────────────────
         $shop->update(['seller_id' => $seller->id]);
 
+        try {
+            app(\App\Services\Telegram\AdminTelegramService::class)
+                ->notifyNewSellerApplication($seller->loadMissing('user', 'shop'));
+        } catch (\Exception $e) {
+            \Log::warning('New seller app Telegram failed', ['error' => $e->getMessage()]);
+        }
+
         // ── Update phone on user record ───────────────────────────────────────
         $user->update(['phone' => $validated['phone_number']]);
 

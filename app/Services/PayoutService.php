@@ -137,6 +137,16 @@ class PayoutService
                 Log::warning('Admin RiderPayoutRequested notification failed: ' . $e->getMessage());
             }
 
+            try {
+                app(\App\Services\Telegram\AdminTelegramService::class)
+                    ->notifyNewRiderPayoutRequest($payout);
+            } catch (\Exception $e) {
+                Log::warning('Admin Telegram rider payout alert failed', [
+                    'payout_id' => $payout->id,
+                    'error'     => $e->getMessage(),
+                ]);
+            }
+
             DB::commit();
             return $payout;
 

@@ -23,20 +23,37 @@ class Admin extends Authenticatable
         'last_login_at',
         'last_login_ip',
         'telegram_linked_at',
+        'telegram_invited_at',
         'telegram_link_token',
         'telegram_chat_id',
+        'telegram_notify_orders',
+        'telegram_notify_payouts',
+        'telegram_notify_sellers',
+        'telegram_notify_reviews',
+        'telegram_notify_deliveries',
+        'telegram_notify_riders',
+        'telegram_notify_system',
     ];
 
     protected $hidden = [
         'password',
         'remember_token',
-        'telegram_linked_at' => 'datetime',
+        'telegram_link_token',
     ];
 
     protected $casts = [
         'is_active' => 'boolean',
         'last_login_at' => 'datetime',
         'email_verified_at' => 'datetime',
+        'telegram_linked_at' => 'datetime',
+        'telegram_invited_at' => 'datetime',
+        'telegram_notify_orders' => 'boolean',
+        'telegram_notify_payouts' => 'boolean',
+        'telegram_notify_sellers' => 'boolean',
+        'telegram_notify_reviews' => 'boolean',
+        'telegram_notify_deliveries' => 'boolean',
+        'telegram_notify_riders' => 'boolean',
+        'telegram_notify_system' => 'boolean',
     ];
 
     // Relationships

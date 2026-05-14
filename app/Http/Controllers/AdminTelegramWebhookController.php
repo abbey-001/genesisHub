@@ -8,6 +8,7 @@ use App\Models\Payout;
 use App\Models\Review;
 use App\Models\Seller;
 use App\Services\Telegram\AdminTelegramService;
+use App\Services\Telegram\SellerTelegramService;
 use App\Services\SellerWalletService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -62,8 +63,15 @@ class AdminTelegramWebhookController extends Controller
         $chatId = (string) $message['chat']['id'];
         $text   = trim($message['text'] ?? '');
 
-        // Special: /start tells any admin their chat ID (for manual registration)
-        if ($text === '/start') {
+        // /start <token> links an invited admin. Plain /start returns the chat ID.
+        if (str_starts_with($text, '/start')) {
+            $token = trim(substr($text, 7));
+
+            if ($token !== '') {
+                $this->linkInvitedAdmin($chatId, $token);
+                return;
+            }
+
             $this->telegram->sendMessage($chatId,
                 "🔐 <b>Admin Bot</b>\n\n"
                 . "Your Telegram Chat ID is:\n<code>{$chatId}</code>\n\n"
@@ -109,6 +117,43 @@ class AdminTelegramWebhookController extends Controller
                 "Unknown command. Type /help to see available commands."
             ),
         };
+    }
+
+    protected function linkInvitedAdmin(string $chatId, string $token): void
+    {
+        $admin = Admin::where('telegram_link_token', $token)->with('role')->first();
+
+        if (! $admin) {
+            $this->telegram->sendMessage($chatId,
+                "Invalid or expired admin invite.\n\nAsk a super-admin to send a new Telegram invite."
+            );
+            return;
+        }
+
+        $conflict = Admin::where('telegram_chat_id', $chatId)
+            ->where('id', '!=', $admin->id)
+            ->first();
+
+        if ($conflict) {
+            $this->telegram->sendMessage($chatId,
+                "This Telegram account is already linked to another admin profile."
+            );
+            return;
+        }
+
+        $admin->update([
+            'telegram_chat_id' => $chatId,
+            'telegram_link_token' => null,
+            'telegram_linked_at' => now(),
+        ]);
+
+        $this->telegram->sendMessage($chatId,
+            "Admin Telegram linked successfully.\n\n"
+            . "Hello <b>{$admin->name}</b>.\n"
+            . "Role: <b>{$admin->role_name}</b>\n\n"
+            . "Notifications will follow your role permissions and enabled preferences.\n"
+            . "Type /help for available commands."
+        );
     }
 
     // =========================================================================
@@ -279,7 +324,7 @@ class AdminTelegramWebhookController extends Controller
     protected function approvePayout(
         string $chatId, int $messageId, string $cbId, Admin $admin, int $payoutId
     ): void {
-        if (! $admin->hasPermission('finance.payouts.approve')) {
+        if (! $admin->hasPermission('payouts.approve')) {
             $this->telegram->answerCallbackQuery($cbId, '⛔ You do not have permission to approve payouts.', true);
             return;
         }
@@ -347,8 +392,8 @@ class AdminTelegramWebhookController extends Controller
         }
 
         $lines = $applications->map(fn($s) =>
-            "• <b>#{$s->id}</b> {$s->user?->name}\n"
-            . "  {$s->business_type ?? 'N/A'} · {$s->city}, {$s->country}\n"
+            "• <b>#{$s->id}</b> " . ($s->user?->name ?? 'N/A') . "\n"
+            . "  " . ($s->business_type ?? 'N/A') . " · {$s->city}, {$s->country}\n"
             . "  Applied: " . $s->created_at->format('d M')
         )->implode("\n\n");
 
@@ -378,8 +423,8 @@ class AdminTelegramWebhookController extends Controller
         $text = "🏪 <b>Seller #{$seller->id}</b>\n\n"
               . "Name: {$seller->user?->name}\n"
               . "Email: {$seller->user?->email}\n"
-              . "Shop: {$seller->shop?->shop_name ?? 'N/A'}\n"
-              . "Business: {$seller->business_type ?? 'N/A'}\n"
+              . "Shop: " . ($seller->shop?->shop_name ?? 'N/A') . "\n"
+              . "Business: " . ($seller->business_type ?? 'N/A') . "\n"
               . "Location: {$seller->city}, {$seller->state}, {$seller->country}\n"
               . "Status: <b>{$seller->verification_status}</b>\n"
               . "Joined: {$seller->created_at->format('d M Y')}";
@@ -401,6 +446,11 @@ class AdminTelegramWebhookController extends Controller
     protected function approveSeller(
         string $chatId, int $messageId, string $cbId, Admin $admin, int $sellerId
     ): void {
+        if (! $admin->hasPermission('sellers.approve')) {
+            $this->telegram->answerCallbackQuery($cbId, 'You do not have permission to approve sellers.', true);
+            return;
+        }
+
         $seller = Seller::with(['user', 'shop'])->find($sellerId);
 
         if (! $seller || $seller->verification_status !== 'pending') {
@@ -513,6 +563,11 @@ class AdminTelegramWebhookController extends Controller
     protected function approveReview(
         string $chatId, int $messageId, string $cbId, Admin $admin, int $reviewId
     ): void {
+        if (! $admin->hasAnyPermission(['products.edit', 'support.manage'])) {
+            $this->telegram->answerCallbackQuery($cbId, 'You do not have permission to approve reviews.', true);
+            return;
+        }
+
         $review = Review::with('product')->find($reviewId);
 
         if (! $review || $review->status !== 'pending') {
@@ -543,6 +598,11 @@ class AdminTelegramWebhookController extends Controller
     protected function rejectReview(
         string $chatId, int $messageId, string $cbId, Admin $admin, int $reviewId
     ): void {
+        if (! $admin->hasAnyPermission(['products.edit', 'support.manage'])) {
+            $this->telegram->answerCallbackQuery($cbId, 'You do not have permission to reject reviews.', true);
+            return;
+        }
+
         $review = Review::find($reviewId);
 
         if (! $review || $review->status !== 'pending') {

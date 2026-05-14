@@ -329,6 +329,15 @@
             @endif
 
             <li class="menu-title mt-3">Quick Links</li>
+            @if($admin?->isSuperAdmin())
+                <li class="menu-item">
+                    <a class="menu-link {{ request()->routeIs('admin.admin.telegram.*') ? 'active' : '' }}"
+                       href="{{ route('admin.admin.telegram.index') }}">
+                        <span class="nav-icon"><i data-lucide="send"></i></span>
+                        <span class="nav-text">Admin Telegram</span>
+                    </a>
+                </li>
+            @endif
             <li class="menu-item">
                 <a class="menu-link" href="{{ route('home') }}" target="_blank">
                     <span class="nav-icon"><i data-lucide="external-link"></i></span>

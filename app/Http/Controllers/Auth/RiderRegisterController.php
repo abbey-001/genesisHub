@@ -3,14 +3,12 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Models\Rider;
 use App\Models\User;
-use App\Models\Seller;
-use App\Models\Shop;
-use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Validation\Rules;
-use Illuminate\Validation\ValidationException;
+use Illuminate\Validation\Rule;
 
 class RiderRegisterController extends Controller
 {
@@ -46,7 +44,7 @@ class RiderRegisterController extends Controller
                 'user_type' => 'rider',
             ]);
     
-            Rider::create([
+            $rider = Rider::create([
                 'user_id' => $user->id,
                 'full_name' => $validated['name'],
                 'phone_number' => $validated['phone'],
@@ -57,6 +55,16 @@ class RiderRegisterController extends Controller
                 'is_verified' => false,
                 'is_active' => false,
             ]);
+
+            try {
+                app(\App\Services\Telegram\AdminTelegramService::class)
+                    ->notifyNewRiderApplication($rider->loadMissing('user'));
+            } catch (\Exception $e) {
+                \Log::warning('Admin Telegram rider application alert failed', [
+                    'rider_id' => $rider->id,
+                    'error'    => $e->getMessage(),
+                ]);
+            }
     
             return $user;
         });

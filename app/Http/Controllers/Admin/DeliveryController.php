@@ -365,6 +365,18 @@ class DeliveryController extends Controller
             ]);
             
             event(new \App\Events\DeliveryStatusUpdated($delivery, $oldStatus, $request->status));
+
+            if ($request->status === 'failed' && $oldStatus !== 'failed') {
+                try {
+                    app(\App\Services\Telegram\AdminTelegramService::class)
+                        ->notifyDeliveryFailed($delivery->fresh(), $request->notes ?? 'Marked failed by admin');
+                } catch (\Exception $e) {
+                    \Log::warning('Admin Telegram delivery failed alert failed', [
+                        'delivery_id' => $delivery->id,
+                        'error'       => $e->getMessage(),
+                    ]);
+                }
+            }
             
             return back()->with('success', 'Delivery status updated successfully!');
             
@@ -402,6 +414,16 @@ class DeliveryController extends Controller
             }
             
             DB::commit();
+
+            try {
+                app(\App\Services\Telegram\AdminTelegramService::class)
+                    ->notifyDeliveryFailed($delivery->fresh(), $request->reason);
+            } catch (\Exception $e) {
+                \Log::warning('Admin Telegram delivery cancelled alert failed', [
+                    'delivery_id' => $delivery->id,
+                    'error'       => $e->getMessage(),
+                ]);
+            }
             
             return back()->with('success', 'Delivery cancelled successfully');
             
