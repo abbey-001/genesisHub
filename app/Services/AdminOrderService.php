@@ -31,14 +31,11 @@ class AdminOrderService
 
             $order->update($updates);
 
-            activity()
-                ->performedOn($order)
-                ->withProperties([
-                    'old_status' => $oldStatus,
-                    'new_status' => $status,
-                    'notes'      => $notes,
-                ])
-                ->log('Order status updated');
+            $this->recordActivity($order, [
+                'old_status' => $oldStatus,
+                'new_status' => $status,
+                'notes'      => $notes,
+            ], 'Order status updated');
 
             // $order->user->notify(new OrderStatusUpdated($order));
 
@@ -59,20 +56,41 @@ class AdminOrderService
     {
         DB::beginTransaction();
         try {
+            if ($order->payment_status !== 'paid') {
+                throw new \RuntimeException('Only paid orders can be submitted for refund.');
+            }
+
+            if (!$order->canBeCancelled() && $order->status !== 'cancelled') {
+                throw new \RuntimeException('This order cannot be moved into the refund queue from its current status.');
+            }
+
             $order->update([
-                'payment_status' => 'refunded',
+                'status'         => 'cancelled',
+                'payment_status' => 'refund_pending',
+                'cancelled_at'   => $order->cancelled_at ?? now(),
+                'refund_amount'  => $amount,
+                'refund_method'  => 'admin_requested',
+                'notes'          => trim(
+                    ($order->notes ?? '') .
+                    "\nAdmin requested refund of NGN " . number_format((float) $amount, 2) .
+                    " on " . now()->format('d M Y H:i') .
+                    ". Reason: {$reason}"
+                ),
             ]);
 
-            activity()
-                ->performedOn($order)
-                ->withProperties([
-                    'amount' => $amount,
-                    'reason' => $reason,
-                ])
-                ->log('Refund processed');
+            $this->recordActivity($order, [
+                'amount' => $amount,
+                'reason' => $reason,
+            ], 'Refund requested by admin');
 
-            // TODO: Actual payment gateway refund
-            // $order->user->notify(new OrderRefunded($order, $amount));
+            try {
+                app(\App\Services\Telegram\AdminTelegramService::class)->notifyRefundRequest($order);
+            } catch (\Exception $e) {
+                \Log::warning('Admin Telegram refund request alert failed', [
+                    'order_id' => $order->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
 
             DB::commit();
             return true;
@@ -103,10 +121,7 @@ class AdminOrderService
                 }
             }
 
-            activity()
-                ->performedOn($order)
-                ->withProperties(['reason' => $reason])
-                ->log('Order cancelled');
+            $this->recordActivity($order, ['reason' => $reason], 'Order cancelled');
 
             // $order->user->notify(new OrderCancelled($order, $reason));
 
@@ -268,6 +283,26 @@ class AdminOrderService
             'labels' => $days,
             'data'   => $revenue,
         ];
+    }
+
+    protected function recordActivity(Order $order, array $properties, string $message): void
+    {
+        if (!function_exists('activity')) {
+            return;
+        }
+
+        try {
+            \activity()
+                ->performedOn($order)
+                ->withProperties($properties)
+                ->log($message);
+        } catch (\Throwable $e) {
+            \Log::warning('Admin order activity log failed', [
+                'order_id' => $order->id,
+                'message' => $message,
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 
     /**

@@ -186,7 +186,7 @@ class OrderController extends Controller
         try {
             $this->orderService->processRefund($order, $request->amount, $request->reason);
 
-            return back()->with('success', 'Refund processed successfully!');
+            return back()->with('success', 'Refund request created. Process the gateway refund from Finance > Refunds.');
         } catch (\Exception $e) {
             return back()->with('error', 'Failed to process refund: ' . $e->getMessage());
         }

@@ -3,8 +3,7 @@
 namespace App\Listeners;
 
 use App\Events\RiderAssignmentFailed;
-use App\Models\User;
-use Illuminate\Support\Facades\Notification;
+use App\Models\Admin;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification as BaseNotification;
 
@@ -22,8 +21,14 @@ class AlertAdminOnAssignmentFailure
             ]);
         }
 
-        // Get all admin users
-        $admins = User::where('role', 'admin')->get();
+        $admins = Admin::with('role.permissions')
+            ->where('is_active', true)
+            ->get()
+            ->filter(fn (Admin $admin) => $admin->hasAnyPermission([
+                'deliveries.view',
+                'deliveries.assign',
+                'deliveries.manage',
+            ]));
         
         // Send notification
         foreach ($admins as $admin) {

@@ -32,6 +32,10 @@ class BroadcastController extends Controller
     public function index()
     {
         $rider = Auth::user()->rider;
+
+        if (! $rider) {
+            abort(403, 'Rider profile is required to view broadcasts');
+        }
         
         // Get active broadcasts sent to this rider
         $broadcasts = $rider->broadcasts()
@@ -47,7 +51,7 @@ class BroadcastController extends Controller
             ->wherePivot('response', 'pending')
             ->latest()
             ->get();
-        dd($broadcasts);
+
         return view('rider.broadcasts.index', compact('broadcasts'));
     }
     
