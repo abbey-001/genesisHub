@@ -110,12 +110,12 @@
                             <i data-lucide="user" class="fs-16 text-muted align-middle me-2"></i>
                             <span class="align-middle">My Profile</span>
                         </a>
-                        
-                        <a class="dropdown-item" href="#">
+                        @if(auth()->guard('admin')->user()->role_id == 1)
+                        <a class="dropdown-item" href="{{ route('admin.admin.telegram.index') }}">
                             <i data-lucide="settings" class="fs-16 text-muted align-middle me-2"></i>
-                            <span class="align-middle">Settings</span>
+                            <span class="align-middle">Telegram Settings</span>
                         </a>
-                        
+                        @endif
                         <div class="dropdown-divider my-1"></div>
                         
                         <form method="POST" action="{{ route('admin.logout') }}">

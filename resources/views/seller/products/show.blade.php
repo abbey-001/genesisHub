@@ -181,7 +181,7 @@
                     <button type="button" class="btn btn-danger" onclick="deleteProduct({{ $product->id }})">
                         <i data-lucide="trash-2" class="fs-16"></i> Delete
                     </button>
-                    <a href="{{ route('product.show', $product->slug) }}" class="btn btn-outline-secondary" target="_blank">
+                    <a href="{{ route('product.show', $product->id) }}" class="btn btn-outline-secondary" target="_blank">
                         <i data-lucide="external-link" class="fs-16"></i> View on Store
                     </a>
                 </div>
