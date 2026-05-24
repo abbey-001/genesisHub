@@ -155,13 +155,13 @@ class Delivery extends Model
 
         foreach ($this->items as $item) {
             // Idempotent — skip items already marked delivered by a previous call.
-            if ($item->status === 'delivered') {
-                continue;
-            }
+            $wasAlreadyDelivered = $item->status === 'delivered';
 
             // Update the item status first so the idempotency guard in
             // processItemDelivered() doesn't fire on a race condition.
-            $item->update(['status' => 'delivered']);
+            if (! $wasAlreadyDelivered) {
+                $item->update(['status' => 'delivered']);
+            }
 
             // Pass the freshly-reloaded item so processItemDelivered()
             // reads the just-written status from the DB, not a stale

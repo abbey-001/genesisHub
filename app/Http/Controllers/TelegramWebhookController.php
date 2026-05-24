@@ -659,24 +659,12 @@ class TelegramWebhookController extends Controller
                     ->where('id', '!=', $delivery->id)
                     ->get();
 
-                $delivery->update([
-                    'delivery_fee'   => $correctPerRowFee,
-                    'status'         => 'delivered',
-                    'delivered_at'   => now(),
-                    'delivery_proof' => $photoPath,
-                ]);
-                OrderItem::whereIn('id', $delivery->items()->pluck('order_item_id')->toArray())
-                    ->update(['status' => 'delivered']);
+                $delivery->update(['delivery_fee' => $correctPerRowFee]);
+                $delivery->markAsDelivered($photoPath);
 
                 foreach ($siblings as $sibling) {
-                    $sibling->update([
-                        'delivery_fee'   => $correctPerRowFee,
-                        'status'         => 'delivered',
-                        'delivered_at'   => now(),
-                        'delivery_proof' => $photoPath,
-                    ]);
-                    OrderItem::whereIn('id', $sibling->items()->pluck('order_item_id')->toArray())
-                        ->update(['status' => 'delivered']);
+                    $sibling->update(['delivery_fee' => $correctPerRowFee]);
+                    $sibling->markAsDelivered($photoPath);
                     $siblingCount++;
                 }
 
@@ -684,13 +672,7 @@ class TelegramWebhookController extends Controller
                 $totalFee = $bundleTotalFee;
 
             } else {
-                $delivery->update([
-                    'status'         => 'delivered',
-                    'delivered_at'   => now(),
-                    'delivery_proof' => $photoPath,
-                ]);
-                OrderItem::whereIn('id', $delivery->items()->pluck('order_item_id')->toArray())
-                    ->update(['status' => 'delivered']);
+                $delivery->markAsDelivered($photoPath);
                 $totalFee = (int) $delivery->delivery_fee;
             }
 
@@ -698,10 +680,6 @@ class TelegramWebhookController extends Controller
             $order->load('items');
             if ($order->items->count() > 0 && $order->items->every(fn($i) => $i->status === 'delivered')) {
                 $order->update(['status' => 'delivered', 'delivered_at' => now()]);
-            }
-
-            if ($delivery->rider) {
-                $delivery->rider->increment('completed_deliveries', 1 + $siblingCount);
             }
 
             DB::commit();

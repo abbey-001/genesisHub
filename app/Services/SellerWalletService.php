@@ -71,6 +71,17 @@ class SellerWalletService
      */
     public function processItemDelivered(OrderItem $item): ?SellerWalletTransaction
     {
+        $item->load('order');
+
+        if ($item->order?->payment_status !== 'paid') {
+            Log::warning('processItemDelivered: order is not paid - skipping wallet credit', [
+                'order_item_id'  => $item->id,
+                'order_id'       => $item->order_id,
+                'payment_status' => $item->order?->payment_status,
+            ]);
+            return null;
+        }
+
         // ── Double-credit guard ──────────────────────────────────────────────
         $alreadyCredited = SellerWalletTransaction::where('transactable_type', OrderItem::class)
             ->where('transactable_id', $item->id)

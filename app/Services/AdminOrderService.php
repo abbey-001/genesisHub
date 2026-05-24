@@ -31,6 +31,17 @@ class AdminOrderService
 
             $order->update($updates);
 
+            if ($status === 'delivered') {
+                /** @var \App\Services\SellerWalletService $walletService */
+                $walletService = app(\App\Services\SellerWalletService::class);
+
+                $order->items()->update(['status' => 'delivered']);
+
+                foreach ($order->items()->get() as $item) {
+                    $walletService->processItemDelivered($item);
+                }
+            }
+
             $this->recordActivity($order, [
                 'old_status' => $oldStatus,
                 'new_status' => $status,

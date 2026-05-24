@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
 use App\Services\DeliveryService;
+use App\Services\SellerWalletService;
 
 class OrderController extends Controller
 {
@@ -89,11 +90,16 @@ class OrderController extends Controller
 
         if ($validated['status'] === 'shipped' && !$order->shipped_at) {
             $order->update(['shipped_at' => now()]);
-        } elseif ($validated['status'] === 'delivered' && !$order->delivered_at) {
-            $order->update(['delivered_at' => now()]);
+        } elseif ($validated['status'] === 'delivered') {
+            if (!$order->delivered_at) {
+                $order->update(['delivered_at' => now()]);
+            }
+            app(SellerWalletService::class)->processItemDelivered($item->fresh());
         } elseif ($validated['status'] === 'cancelled' && !$order->cancelled_at) {
             $order->update(['cancelled_at' => now()]);
         }
+
+        $order->refresh()->syncStatusFromItems();
 
         return back()->with('success', 'Order status updated successfully.');
     }

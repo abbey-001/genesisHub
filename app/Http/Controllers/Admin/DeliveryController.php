@@ -359,10 +359,15 @@ class DeliveryController extends Controller
         try {
             $oldStatus = $delivery->status;
             
-            $delivery->update([
-                'status' => $request->status,
-                'notes' => $request->notes
-            ]);
+            if ($request->status === 'delivered' && $oldStatus !== 'delivered') {
+                $delivery->markAsDelivered();
+                $delivery->update(['notes' => $request->notes]);
+            } else {
+                $delivery->update([
+                    'status' => $request->status,
+                    'notes' => $request->notes
+                ]);
+            }
             
             event(new \App\Events\DeliveryStatusUpdated($delivery, $oldStatus, $request->status));
 

@@ -311,18 +311,7 @@ class DeliveryService
     {
         DB::beginTransaction();
         try {
-            $delivery->update([
-                'status'         => 'delivered',
-                'delivered_at'   => now(),
-                'delivery_proof' => $proofPhotoPath,
-            ]);
-
-            OrderItem::whereIn(
-                'id',
-                $delivery->items()->pluck('order_item_id')->toArray()
-            )->update(['status' => 'delivered']);
-
-            $delivery->rider?->increment('completed_deliveries');
+            $delivery->markAsDelivered($proofPhotoPath);
 
             if ($delivery->bundle_id) {
                 $bundle  = $delivery->bundle;

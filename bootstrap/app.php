@@ -47,6 +47,7 @@ return Application::configure(basePath: dirname(__DIR__))
     \App\Console\Commands\AlgoliaSetupCommand::class,
      \App\Console\Commands\SendTelegramDigest::class,
     \App\Console\Commands\RunTelegramProactiveChecks::class,
+    \App\Console\Commands\SyncDeliveredSellerWallets::class,
     ])
     ->withExceptions(function (Exceptions $exceptions): void {
         //
