@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Notifications\RiderResetPasswordNotification;
+use App\Notifications\SellerResetPasswordNotification;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -58,9 +60,9 @@ class PasswordResetController extends Controller
             return back()->with('social_only', true);
         }
 
-        // Send the reset link using the default 'users' broker
-        Password::broker()->sendResetLink(
-            ['email' => $request->email, 'user_type' => 'seller']
+        Password::broker('sellers')->sendResetLink(
+            ['email' => $request->email, 'user_type' => 'seller'],
+            fn (User $user, string $token) => $user->notify(new SellerResetPasswordNotification($token))
         );
 
         return back()->with('status', 'If a seller account with that email exists, we have sent a reset link.');
@@ -83,8 +85,8 @@ class PasswordResetController extends Controller
             'password_confirmation' => ['required'],
         ]);
 
-        $status = Password::broker()->reset(
-            $request->only('email', 'password', 'password_confirmation', 'token'),
+        $status = Password::broker('sellers')->reset(
+            $request->only('email', 'password', 'password_confirmation', 'token') + ['user_type' => 'seller'],
             function (User $user, string $password) {
                 $user->forceFill([
                     'password'       => Hash::make($password),
@@ -132,7 +134,8 @@ class PasswordResetController extends Controller
         }
 
         Password::broker()->sendResetLink(
-            ['email' => $request->email, 'user_type' => 'rider']
+            ['email' => $request->email, 'user_type' => 'rider'],
+            fn (User $user, string $token) => $user->notify(new RiderResetPasswordNotification($token))
         );
 
         return back()->with('status', 'If a rider account with that email exists, we have sent a reset link.');
@@ -156,7 +159,7 @@ class PasswordResetController extends Controller
         ]);
 
         $status = Password::broker()->reset(
-            $request->only('email', 'password', 'password_confirmation', 'token'),
+            $request->only('email', 'password', 'password_confirmation', 'token') + ['user_type' => 'rider'],
             function (User $user, string $password) {
                 $user->forceFill([
                     'password'       => Hash::make($password),

@@ -60,26 +60,27 @@ class SellerWallet extends Model
         return DB::transaction(function () use (
             $amount, $source, $transactable, $description, $metadata, $updateTotalEarned
         ) {
-            $this->lockForUpdate();
+            $wallet = $this->lockedFresh();
 
-            $balanceBefore  = $this->balance;
-            $this->balance  = round($this->balance + $amount, 2);
+            $balanceBefore  = $wallet->balance;
+            $wallet->balance  = round($wallet->balance + $amount, 2);
 
             if ($updateTotalEarned) {
-                $this->total_earned = round($this->total_earned + $amount, 2);
+                $wallet->total_earned = round($wallet->total_earned + $amount, 2);
             }
 
-            $this->last_transaction_at = now();
-            $this->save();
+            $wallet->last_transaction_at = now();
+            $wallet->save();
+            $this->setRawAttributes($wallet->getAttributes(), true);
 
-            return $this->transactions()->create([
-                'seller_id'         => $this->seller_id,
-                'wallet_id'         => $this->id,
+            return $wallet->transactions()->create([
+                'seller_id'         => $wallet->seller_id,
+                'wallet_id'         => $wallet->id,
                 'type'              => 'credit',
                 'source'            => $source,
                 'amount'            => $amount,
                 'balance_before'    => $balanceBefore,
-                'balance_after'     => $this->balance,
+                'balance_after'     => $wallet->balance,
                 'transactable_type' => $transactable ? get_class($transactable) : null,
                 'transactable_id'   => $transactable?->id,
                 'description'       => $description,
@@ -103,26 +104,27 @@ class SellerWallet extends Model
         return DB::transaction(function () use (
             $amount, $source, $transactable, $description, $metadata
         ) {
-            $this->lockForUpdate();
+            $wallet = $this->lockedFresh();
 
-            if ($this->balance < $amount) {
+            if ($wallet->balance < $amount) {
                 throw new \Exception('Insufficient wallet balance');
             }
 
-            $balanceBefore         = $this->balance;
-            $this->balance         = round($this->balance - $amount, 2);
-            $this->total_withdrawn = round($this->total_withdrawn + $amount, 2);
-            $this->last_transaction_at = now();
-            $this->save();
+            $balanceBefore         = $wallet->balance;
+            $wallet->balance         = round($wallet->balance - $amount, 2);
+            $wallet->total_withdrawn = round($wallet->total_withdrawn + $amount, 2);
+            $wallet->last_transaction_at = now();
+            $wallet->save();
+            $this->setRawAttributes($wallet->getAttributes(), true);
 
-            return $this->transactions()->create([
-                'seller_id'         => $this->seller_id,
-                'wallet_id'         => $this->id,
+            return $wallet->transactions()->create([
+                'seller_id'         => $wallet->seller_id,
+                'wallet_id'         => $wallet->id,
                 'type'              => 'debit',
                 'source'            => $source,
                 'amount'            => $amount,
                 'balance_before'    => $balanceBefore,
-                'balance_after'     => $this->balance,
+                'balance_after'     => $wallet->balance,
                 'transactable_type' => $transactable ? get_class($transactable) : null,
                 'transactable_id'   => $transactable?->id,
                 'transaction_id'    => null,
@@ -139,26 +141,27 @@ class SellerWallet extends Model
     public function reserve($amount, $source, $transactable = null, $description = null)
     {
         return DB::transaction(function () use ($amount, $source, $transactable, $description) {
-            $this->lockForUpdate();
+            $wallet = $this->lockedFresh();
 
-            if ($this->balance < $amount) {
+            if ($wallet->balance < $amount) {
                 throw new \Exception('Insufficient balance to reserve');
             }
 
-            $balanceBefore           = $this->balance;
-            $this->balance           = round($this->balance - $amount, 2);
-            $this->reserved_balance  = round($this->reserved_balance + $amount, 2);
-            $this->last_transaction_at = now();
-            $this->save();
+            $balanceBefore           = $wallet->balance;
+            $wallet->balance           = round($wallet->balance - $amount, 2);
+            $wallet->reserved_balance  = round($wallet->reserved_balance + $amount, 2);
+            $wallet->last_transaction_at = now();
+            $wallet->save();
+            $this->setRawAttributes($wallet->getAttributes(), true);
 
-            return $this->transactions()->create([
-                'seller_id'         => $this->seller_id,
-                'wallet_id'         => $this->id,
+            return $wallet->transactions()->create([
+                'seller_id'         => $wallet->seller_id,
+                'wallet_id'         => $wallet->id,
                 'type'              => 'reserve',
                 'source'            => $source,
                 'amount'            => $amount,
                 'balance_before'    => $balanceBefore,
-                'balance_after'     => $this->balance,
+                'balance_after'     => $wallet->balance,
                 'transactable_type' => $transactable ? get_class($transactable) : null,
                 'transactable_id'   => $transactable?->id,
                 'description'       => $description ?? 'Funds reserved',
@@ -174,26 +177,27 @@ class SellerWallet extends Model
     public function release($amount, $source, $transactable = null, $description = null)
     {
         return DB::transaction(function () use ($amount, $source, $transactable, $description) {
-            $this->lockForUpdate();
+            $wallet = $this->lockedFresh();
 
-            if ($this->reserved_balance < $amount) {
+            if ($wallet->reserved_balance < $amount) {
                 throw new \Exception('Insufficient reserved balance');
             }
 
-            $balanceBefore          = $this->balance;
-            $this->balance          = round($this->balance + $amount, 2);
-            $this->reserved_balance = round($this->reserved_balance - $amount, 2);
-            $this->last_transaction_at = now();
-            $this->save();
+            $balanceBefore          = $wallet->balance;
+            $wallet->balance          = round($wallet->balance + $amount, 2);
+            $wallet->reserved_balance = round($wallet->reserved_balance - $amount, 2);
+            $wallet->last_transaction_at = now();
+            $wallet->save();
+            $this->setRawAttributes($wallet->getAttributes(), true);
 
-            return $this->transactions()->create([
-                'seller_id'         => $this->seller_id,
-                'wallet_id'         => $this->id,
+            return $wallet->transactions()->create([
+                'seller_id'         => $wallet->seller_id,
+                'wallet_id'         => $wallet->id,
                 'type'              => 'release',
                 'source'            => $source,
                 'amount'            => $amount,
                 'balance_before'    => $balanceBefore,
-                'balance_after'     => $this->balance,
+                'balance_after'     => $wallet->balance,
                 'transactable_type' => $transactable ? get_class($transactable) : null,
                 'transactable_id'   => $transactable?->id,
                 'description'       => $description ?? 'Reserved funds released',
@@ -210,12 +214,13 @@ class SellerWallet extends Model
     public function addPending($amount)
     {
         return DB::transaction(function () use ($amount) {
-            $this->lockForUpdate();
+            $wallet = $this->lockedFresh();
 
-            $this->pending_balance    = round($this->pending_balance + $amount, 2);
-            $this->total_earned       = round($this->total_earned + $amount, 2);
-            $this->last_transaction_at = now();
-            $this->save();
+            $wallet->pending_balance    = round($wallet->pending_balance + $amount, 2);
+            $wallet->total_earned       = round($wallet->total_earned + $amount, 2);
+            $wallet->last_transaction_at = now();
+            $wallet->save();
+            $this->setRawAttributes($wallet->getAttributes(), true);
 
             return $this;
         });
@@ -235,22 +240,23 @@ class SellerWallet extends Model
     public function releasePendingWithSnapshot($amount): array
     {
         return DB::transaction(function () use ($amount) {
-            $this->lockForUpdate();
+            $wallet = $this->lockedFresh();
 
-            if ($this->pending_balance < $amount) {
+            if ($wallet->pending_balance < $amount) {
                 throw new \Exception(
                     "Insufficient pending balance (have ₦{$this->pending_balance}, need ₦{$amount})"
                 );
             }
 
-            $balanceBefore = $this->balance;
+            $balanceBefore = $wallet->balance;
 
-            $this->pending_balance    = round($this->pending_balance - $amount, 2);
-            $this->balance            = round($this->balance + $amount, 2);
-            $this->last_transaction_at = now();
-            $this->save();
+            $wallet->pending_balance    = round($wallet->pending_balance - $amount, 2);
+            $wallet->balance            = round($wallet->balance + $amount, 2);
+            $wallet->last_transaction_at = now();
+            $wallet->save();
+            $this->setRawAttributes($wallet->getAttributes(), true);
 
-            return ['before' => $balanceBefore, 'after' => $this->balance];
+            return ['before' => $balanceBefore, 'after' => $wallet->balance];
         });
     }
 
@@ -271,10 +277,11 @@ class SellerWallet extends Model
     public function reverseWithdrawal($amount)
     {
         return DB::transaction(function () use ($amount) {
-            $this->lockForUpdate();
+            $wallet = $this->lockedFresh();
 
-            $this->total_withdrawn = max(0, round($this->total_withdrawn - $amount, 2));
-            $this->save();
+            $wallet->total_withdrawn = max(0, round($wallet->total_withdrawn - $amount, 2));
+            $wallet->save();
+            $this->setRawAttributes($wallet->getAttributes(), true);
 
             return $this;
         });
@@ -300,5 +307,10 @@ class SellerWallet extends Model
     public function hasNegativeBalance(): bool
     {
         return $this->balance < 0;
+    }
+
+    protected function lockedFresh(): self
+    {
+        return static::whereKey($this->getKey())->lockForUpdate()->firstOrFail();
     }
 }

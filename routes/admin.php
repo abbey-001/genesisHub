@@ -68,6 +68,7 @@ Route::prefix('admin')->name('admin.')->middleware(['admin'])->group(function ()
     Route::post('/sellers/{seller}/activate', [SellerController::class, 'activate'])->name('sellers.activate');
     Route::post('/sellers/{seller}/notify', [SellerController::class, 'notify'])->name('sellers.notify');
     Route::post('/sellers/{seller}/update-commission', [SellerController::class, 'updateCommission'])->name('sellers.update-commission');
+    Route::post('/sellers/update-commission-all', [SellerController::class, 'updateAllCommissions'])->name('sellers.update-commission-all');
 
 
     Route::get('/riders', [RiderController::class, 'index'])->name('riders.index');

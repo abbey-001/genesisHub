@@ -140,10 +140,7 @@ class ProcessAutoPayouts extends Command
         SellerPayoutSettings $setting,
         SellerWalletService  $walletService
     ): array {
-        // BUG FIX: was checking is_verified (boolean) but requestPayout() checks
-        // verification_status === 'verified'. Mismatched checks caused verified-but-
-        // not-fully-approved sellers to count as 'failed' instead of 'skipped'.
-        if ($seller->verification_status !== 'verified') {
+        if (!$seller->is_verified) {
             return ['valid' => false, 'reason' => "Not verified (status={$seller->verification_status})"];
         }
 

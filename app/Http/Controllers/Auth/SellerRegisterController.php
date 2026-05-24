@@ -56,6 +56,7 @@ class SellerRegisterController extends Controller
                     ['Not Included']
                 )),
             ],
+            'terms' => ['accepted'],
         ]);
 
         // ── 1. Create the User record ─────────────────────────────────────────
@@ -109,6 +110,8 @@ class SellerRegisterController extends Controller
             'postal_code'         => $validated['postal_code'],
             'country'             => $validated['country'],
             'verification_status' => 'pending',
+            'is_verified'         => false,
+            'commission_rate'     => config('platform.commission_rate', 10),
         ]);
 
         // ── 5. Link shop → seller ─────────────────────────────────────────────

@@ -83,11 +83,23 @@ class ReportService
         }
         
         // Summary
+        $commissionQuery = $this->commissionItemsQuery($start, $end);
+
+        if (!empty($params['seller_id'])) {
+            $commissionQuery->where('order_items.seller_id', $params['seller_id']);
+        }
+
+        if (!empty($params['category_id'])) {
+            $commissionQuery
+                ->join('products', 'order_items.product_id', '=', 'products.id')
+                ->where('products.category_id', $params['category_id']);
+        }
+
         $summary = [
             'total_revenue' => $query->sum('total'),
             'total_orders' => $query->count(),
             'avg_order_value' => $query->avg('total'),
-            'total_commission' => $query->sum('total') * 0.1, // 10% commission
+            'total_commission' => $commissionQuery->sum(DB::raw('order_items.total_price * COALESCE(sellers.commission_rate, 10) / 100')),
         ];
         
         // Revenue by day
@@ -236,7 +248,7 @@ class ReportService
                     $q2->whereBetween('order_items.created_at', [$start, $end]);
                 });
             })->count(),
-            'verified' => Seller::where('verification_status', 'verified')->count(),
+            'verified' => Seller::where('is_verified', true)->count(),
         ];
         
         // Rider metrics
@@ -487,17 +499,24 @@ class ReportService
             $query->where('seller_id', $params['seller_id']);
         }
         
-        // Calculate commission (10% platform fee)
+        $commissionBase = $this->commissionItemsQuery($start, $end);
+        if (!empty($params['seller_id'])) {
+            $commissionBase->where('order_items.seller_id', $params['seller_id']);
+        }
+
+        $totalSales = (clone $query)->sum('total_price');
+        $totalCommission = $commissionBase->sum(DB::raw('order_items.total_price * COALESCE(sellers.commission_rate, 10) / 100'));
+
         $summary = [
-            'total_sales' => $query->sum('total_price'),
-            'total_commission' => $query->sum('total_price') * 0.1,
-            'seller_earnings' => $query->sum('total_price') * 0.9,
+            'total_sales' => $totalSales,
+            'total_commission' => $totalCommission,
+            'seller_earnings' => $totalSales - $totalCommission,
         ];
         
         // Commission by seller
-        $commissionBySeller = OrderItem::whereBetween('created_at', [$start, $end])
-            ->select('seller_id', DB::raw('SUM(total_price) as sales'), DB::raw('SUM(total_price) * 0.1 as commission'))
-            ->groupBy('seller_id')
+        $commissionBySeller = $this->commissionItemsQuery($start, $end)
+            ->select('order_items.seller_id', DB::raw('SUM(order_items.total_price) as sales'), DB::raw('SUM(order_items.total_price * COALESCE(sellers.commission_rate, 10) / 100) as commission'))
+            ->groupBy('order_items.seller_id')
             ->orderByDesc('commission')
             ->with('seller.shop')
             ->get();
@@ -506,16 +525,17 @@ class ReportService
         $commissionByCategory = OrderItem::whereBetween('created_at', [$start, $end])
             ->join('products', 'order_items.product_id', '=', 'products.id')
             ->join('categories', 'products.category_id', '=', 'categories.id')
-            ->select('categories.name', DB::raw('SUM(order_items.total_price) * 0.1 as commission'))
+            ->leftJoin('sellers', 'order_items.seller_id', '=', 'sellers.id')
+            ->select('categories.name', DB::raw('SUM(order_items.total_price * COALESCE(sellers.commission_rate, 10) / 100) as commission'))
             ->groupBy('categories.id', 'categories.name')
             ->orderByDesc('commission')
             ->get();
         
         // Daily commission
-        $dailyCommission = OrderItem::whereBetween('created_at', [$start, $end])
+        $dailyCommission = $this->commissionItemsQuery($start, $end)
             ->select(
-                DB::raw('DATE(created_at) as date'),
-                DB::raw('SUM(total_price) * 0.1 as commission')
+                DB::raw('DATE(order_items.created_at) as date'),
+                DB::raw('SUM(order_items.total_price * COALESCE(sellers.commission_rate, 10) / 100) as commission')
             )
             ->groupBy('date')
             ->orderBy('date')
@@ -690,5 +710,11 @@ class ReportService
         return Order::where('payment_status', 'paid')
             ->whereBetween('created_at', [$previousStart, $previousEnd])
             ->sum('total');
+    }
+
+    protected function commissionItemsQuery($start, $end)
+    {
+        return OrderItem::whereBetween('order_items.created_at', [$start, $end])
+            ->leftJoin('sellers', 'order_items.seller_id', '=', 'sellers.id');
     }
 }

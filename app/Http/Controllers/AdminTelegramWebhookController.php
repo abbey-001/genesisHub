@@ -461,7 +461,10 @@ class AdminTelegramWebhookController extends Controller
         try {
             DB::beginTransaction();
 
-            $seller->update(['verification_status' => 'verified']);
+            $seller->update([
+                'verification_status' => 'verified',
+                'is_verified'         => true,
+            ]);
             $seller->shop?->update(['is_active' => true]);
 
             DB::commit();
@@ -698,7 +701,7 @@ class AdminTelegramWebhookController extends Controller
         $revenueToday = Order::whereDate('created_at', today())->where('payment_status', 'paid')->sum('total');
         $ordersMonth  = Order::whereMonth('created_at', now()->month)->count();
         $revenueMonth = Order::whereMonth('created_at', now()->month)->where('payment_status', 'paid')->sum('total');
-        $totalSellers = Seller::where('verification_status', 'verified')->count();
+        $totalSellers = Seller::where('is_verified', true)->count();
         $activeOrders = Order::whereIn('status', ['pending', 'processing'])->count();
         $pendingPayouts = Payout::where('status', 'pending')->sum('amount');
 

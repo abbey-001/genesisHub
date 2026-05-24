@@ -196,16 +196,23 @@ class PayoutController extends Controller
 
         try {
             $result = $this->walletService->failPayout($payout, $request->reason);
+            $payout->refresh();
 
             if ($result['success']) {
+                $seller = $payout->seller;
+
+                try {
+                    app(\App\Services\Telegram\SellerTelegramService::class)
+                        ->notifyPayoutRejected($seller, $payout);
+                } catch (\Exception $e) {
+                    \Log::warning('Seller payout rejection Telegram failed', [
+                        'payout_id' => $payout->id,
+                        'error'     => $e->getMessage(),
+                    ]);
+                }
+
                 return back()->with('success', 'Payout rejected and ₦' . number_format($payout->amount, 2) . ' returned to seller wallet.');
             }
-            $seller = $payout->seller;
-             if ($seller->telegram_chat_id) {
-                  app(\App\Services\Telegram\SellerTelegramService::class)
-                      ->notifyPayoutRejected($seller, $payout);
-             }
-
             return back()->with('error', $result['message'] ?? 'Rejection failed.');
 
         } catch (\Exception $e) {

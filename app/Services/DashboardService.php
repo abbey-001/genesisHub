@@ -9,6 +9,7 @@ use App\Models\Rider;
 use App\Models\Delivery;
 use App\Models\Product;
 use App\Models\Payout;
+use App\Models\OrderItem;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 
@@ -90,7 +91,7 @@ class DashboardService
             // Seller Metrics
             'sellers' => [
                 'pending_approval' => Seller::where('verification_status', 'pending')->count(),
-                'active' => Seller::where('verification_status', 'verified')->count(),
+                'active' => Seller::where('is_verified', true)->count(),
             ],
 
             // Rider Metrics
@@ -269,16 +270,16 @@ class DashboardService
      */
     private function getCommission($period)
     {
-        $query = Order::where('payment_status', 'paid');
+        $query = OrderItem::leftJoin('sellers', 'order_items.seller_id', '=', 'sellers.id')
+            ->whereHas('order', fn($q) => $q->where('payment_status', 'paid'));
 
-        $total = match($period) {
-            'today' => $query->whereDate('created_at', today())->sum('total'),
-            'this_month' => $query->whereMonth('created_at', now()->month)->sum('total'),
-            default => 0,
+        match($period) {
+            'today' => $query->whereDate('order_items.created_at', today()),
+            'this_month' => $query->whereMonth('order_items.created_at', now()->month),
+            default => null,
         };
 
-        // Assuming 10% commission
-        return $total * 0.10;
+        return $query->sum(DB::raw('order_items.total_price * COALESCE(sellers.commission_rate, 10) / 100'));
     }
 
     /**

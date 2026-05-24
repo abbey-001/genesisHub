@@ -19,6 +19,38 @@
     <div class="alert alert-danger alert-dismissible fade show"><i data-lucide="alert-circle" class="me-2"></i>{{ session('error') }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
 @endif
 
+<div class="card mb-3">
+    <div class="card-body">
+        <form action="{{ route('admin.sellers.update-commission-all') }}" method="POST" class="row g-2 align-items-end">
+            @csrf
+            <div class="col-md-4">
+                <label class="form-label fw-semibold">Set commission for all sellers</label>
+                <div class="input-group">
+                    <input type="number"
+                           name="commission_rate"
+                           class="form-control"
+                           value="{{ old('commission_rate', config('platform.commission_rate', 10)) }}"
+                           step="0.01"
+                           min="0"
+                           max="100"
+                           required>
+                    <span class="input-group-text">%</span>
+                </div>
+            </div>
+            <div class="col-md-auto">
+                <button type="submit"
+                        class="btn btn-primary"
+                        onclick="return confirm('Apply this commission rate to every seller?')">
+                    <i data-lucide="percent" class="me-1"></i>Apply to All Sellers
+                </button>
+            </div>
+            <div class="col-md">
+                <small class="text-muted">This updates each seller's commission rate. Individual sellers can still be changed from their profile.</small>
+            </div>
+        </form>
+    </div>
+</div>
+
 <!-- Statistics Cards -->
 <div class="row">
     <div class="col-xl-2 col-sm-4">
@@ -229,7 +261,7 @@
                                 <td>
                                     @php
                                         $statusMap = [
-                                            'approved'  => ['bg-success',   'Verified'],
+                                            'verified'  => ['bg-success',   'Verified'],
                                             'pending'   => ['bg-warning',   'Pending'],
                                             'rejected'  => ['bg-danger',    'Rejected'],
                                             'suspended' => ['bg-secondary', 'Suspended'],
@@ -269,7 +301,7 @@
                                                         </button>
                                                     </form>
                                                 </li>
-                                            @elseif($seller->verification_status === 'approved')
+                                            @elseif($seller->verification_status === 'verified')
                                                 <li>
                                                     <button type="button" class="dropdown-item text-danger"
                                                             data-bs-toggle="modal"
@@ -282,7 +314,7 @@
                                     </div>
 
                                     <!-- Suspend Modal -->
-                                    @if($seller->verification_status === 'approved')
+                                    @if($seller->verification_status === 'verified')
                                     <div class="modal fade" id="suspendModal{{ $seller->id }}" tabindex="-1">
                                         <div class="modal-dialog">
                                             <div class="modal-content">

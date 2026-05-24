@@ -62,10 +62,10 @@ class OrderController extends Controller
             'user',
         ]);
 
-        $commissionRate = config('platform.commission_rate');
+        $commissionRate = $seller->commission_rate ?? config('platform.commission_rate', 10);
 
         $sellerTotal = $order->items->sum(function ($item) use ($commissionRate) {
-            return $item->total_price * (1 - $commissionRate);
+            return $item->total_price * (1 - ($commissionRate / 100));
         });
 
         return view('seller.orders.show', compact('order', 'sellerTotal'));

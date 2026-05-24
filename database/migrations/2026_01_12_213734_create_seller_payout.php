@@ -11,6 +11,24 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (!Schema::hasTable('payouts')) {
+            Schema::create('payouts', function (Blueprint $table) {
+                $table->id();
+                $table->foreignId('seller_id')->constrained()->onDelete('cascade');
+                $table->decimal('amount', 10, 2);
+                $table->enum('status', ['pending', 'processing', 'completed', 'failed'])->default('pending');
+                $table->string('payout_method')->nullable();
+                $table->string('transaction_id')->nullable();
+                $table->text('notes')->nullable();
+                $table->timestamp('requested_at')->useCurrent();
+                $table->timestamp('processed_at')->nullable();
+                $table->timestamps();
+
+                $table->index(['seller_id', 'status']);
+                $table->index('requested_at');
+            });
+        }
+
         // Main wallet table - stores current balance for each seller
         Schema::create('seller_wallets', function (Blueprint $table) {
             $table->id();

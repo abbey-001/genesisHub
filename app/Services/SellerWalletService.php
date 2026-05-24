@@ -89,7 +89,7 @@ class SellerWalletService
             $seller = Seller::findOrFail($item->seller_id);
             $wallet = $this->getWallet($seller);
 
-            $commissionRate = config('platform.commission_rate');
+            $commissionRate = $seller->commission_rate ?? config('platform.commission_rate');
             $commission     = round((float) $item->total_price * ($commissionRate / 100), 2);
             $sellerEarnings = round((float) $item->total_price - $commission, 2);
 
@@ -320,7 +320,7 @@ class SellerWalletService
     public function requestPayout(Seller $seller, array $data): Payout
     {
         // ── Pre-flight (no transaction needed here) ───────────────────────────
-        if ($seller->verification_status !== 'verified') {
+        if (!$seller->is_verified) {
             throw new \Exception('Only verified sellers can request payouts.');
         }
 
@@ -354,12 +354,9 @@ class SellerWalletService
         }
 
         // ── Atomic: create Payout + debit wallet ─────────────────────────────
-        return DB::transaction(function () use ($wallet, $seller, $data) {
+        $payout = DB::transaction(function () use ($wallet, $seller, $data) {
             $feeAmount      = $this->calculatePayoutFee($data['amount'], $data['payout_method']);
             $netAmount      = $data['amount'] - $feeAmount;
-            $feePercentage  = $data['amount'] > 0
-                ? round(($feeAmount / $data['amount']) * 100, 2)
-                : 0;
 
             $payout = Payout::create([
                 'seller_id'             => $seller->id,
@@ -367,7 +364,6 @@ class SellerWalletService
                 'amount'                => $data['amount'],
                 'fee_amount'            => $feeAmount,
                 'net_amount'            => $netAmount,
-                'fee_percentage'        => $feePercentage,
                 'payout_method'         => $data['payout_method'],
                 'notes'                 => $data['notes'] ?? null,
                 'status'                => 'pending',
@@ -396,6 +392,19 @@ class SellerWalletService
 
             return $payout;
         });
+
+        try {
+            app(\App\Services\Telegram\SellerTelegramService::class)
+                ->notifyPayoutRequested($seller->fresh(['wallet', 'shop', 'user']), $payout);
+        } catch (\Exception $e) {
+            Log::warning('Seller Telegram payout request alert failed', [
+                'seller_id' => $seller->id,
+                'payout_id' => $payout->id,
+                'error'     => $e->getMessage(),
+            ]);
+        }
+
+        return $payout;
     }
 
     /**

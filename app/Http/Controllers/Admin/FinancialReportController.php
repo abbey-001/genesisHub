@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Order;
+use App\Models\OrderItem;
 use App\Models\Payout;
 use App\Models\Delivery;
 use App\Models\SellerWalletTransaction;
@@ -38,9 +39,8 @@ class FinancialReportController extends Controller
 
         // Commission Earned
         $commission = [
-            'total' => Order::where('payment_status', 'paid')
-                ->whereBetween('created_at', [$dateFrom, $dateTo])
-                ->sum(DB::raw('total * 0.10')), // Assuming 10% commission
+            'total' => $this->orderItemCommissionQuery($dateFrom, $dateTo)
+                ->sum(DB::raw('order_items.total_price * COALESCE(sellers.commission_rate, 10) / 100')),
             'from_deliveries' => Delivery::where('status', 'delivered')
                 ->whereBetween('delivered_at', [$dateFrom, $dateTo])
                 ->sum(DB::raw('delivery_fee * 0.10')),
@@ -187,21 +187,36 @@ class FinancialReportController extends Controller
         fputcsv($file, ['Date', 'Order #', 'Order Total', 'Commission Rate', 'Commission Amount']);
 
         $orders = Order::where('payment_status', 'paid')
+            ->with('items.seller')
             ->whereBetween('created_at', [$dateFrom, $dateTo])
             ->get();
 
         foreach ($orders as $order) {
-            $commissionRate = 0.10; // 10%
-            $commission = $order->total * $commissionRate;
+            $commission = $order->items->sum(function ($item) {
+                $rate = $item->seller?->commission_rate ?? config('platform.commission_rate', 10);
+                return $item->total_price * ($rate / 100);
+            });
+
+            $rateLabel = $order->items
+                ->map(fn($item) => (string) ($item->seller?->commission_rate ?? config('platform.commission_rate', 10)) . '%')
+                ->unique()
+                ->implode(', ');
 
             fputcsv($file, [
                 $order->created_at->format('Y-m-d'),
                 $order->order_number,
                 $order->total,
-                ($commissionRate * 100) . '%',
+                $rateLabel,
                 $commission
             ]);
         }
+    }
+
+    protected function orderItemCommissionQuery($dateFrom, $dateTo)
+    {
+        return OrderItem::whereBetween('order_items.created_at', [$dateFrom, $dateTo])
+            ->whereHas('order', fn($q) => $q->where('payment_status', 'paid'))
+            ->leftJoin('sellers', 'order_items.seller_id', '=', 'sellers.id');
     }
 
     /**

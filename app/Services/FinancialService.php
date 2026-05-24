@@ -20,9 +20,9 @@ class FinancialService
         $sellerItems = $order->items()->where('seller_id', $seller->id)->get();
         $subtotal = $sellerItems->sum('total_price');
         
-        // Deduct platform commission (default 10%)
-        $commissionRate = $seller->commission_rate ?? 0.10;
-        $commission = $subtotal * $commissionRate;
+        // commission_rate is stored as a percentage, e.g. 10 means 10%.
+        $commissionRate = $seller->commission_rate ?? config('platform.commission_rate', 10);
+        $commission = $subtotal * ($commissionRate / 100);
         
         return $subtotal - $commission;
     }
@@ -62,7 +62,7 @@ class FinancialService
                     [
                         'order_id' => $order->id,
                         'order_number' => $order->order_number,
-                        'commission_rate' => $seller->commission_rate ?? 0.10
+                        'commission_rate' => $seller->commission_rate ?? config('platform.commission_rate', 10)
                     ]
                 );
             }

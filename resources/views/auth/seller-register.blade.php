@@ -300,6 +300,57 @@ html, body {
 
 .mobile-step-dot.active { background: #714e32; flex: 2; }
 .mobile-step-dot.done   { background: rgba(113,78,50,.4); }
+.mobile-step-labels {
+    display: none;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+    margin: -18px 0 22px;
+}
+.mobile-step-label {
+    min-width: 0;
+    padding: 7px 8px;
+    border: 1px solid #e0e4ea;
+    border-radius: 8px;
+    background: #fff;
+    color: #6b7280;
+    font-size: 11.5px;
+    font-weight: 700;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.mobile-step-label.active {
+    border-color: rgba(113,78,50,.28);
+    background: rgba(113,78,50,.07);
+    color: #714e32;
+}
+
+.registration-context {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    background: #fff;
+    border: 1px solid #e4e8ef;
+    border-left: 4px solid #714e32;
+    border-radius: 12px;
+    padding: 15px 17px;
+    margin-bottom: 24px;
+    box-shadow: 0 10px 28px rgba(15, 23, 42, .05);
+}
+.registration-context__icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    background: rgba(113,78,50,.08);
+    color: #714e32;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+.registration-context__title { margin: 0 0 4px; font-size: 13.5px; font-weight: 800; color: #1f2937; }
+.registration-context__text { margin: 0; font-size: 13px; line-height: 1.55; color: #55606d; }
 
 /* ── Step panels ── */
 .step-panel { display: none; }
@@ -727,10 +778,14 @@ select.form-control {
 
 @media (max-width: 720px) {
     .auth-panel { display: none; }
-    .auth-mobile-logo { display: block; }
-    .mobile-steps { display: flex; }
-    .auth-form-side { padding: 40px 20px 80px; justify-content: flex-start; }
+    .auth-mobile-logo { display: block; margin-bottom: 24px; }
+    .mobile-steps { display: flex; margin-bottom: 24px; }
+    .mobile-step-labels { display: grid; }
+    .auth-form-side { padding: 28px 16px 72px; justify-content: flex-start; }
     .auth-form-box { max-width: 100%; }
+    .form-header { margin-bottom: 20px; }
+    .form-header__title { font-size: 23px; }
+    .registration-context { padding: 14px; margin-bottom: 22px; }
     .form-row--2 { grid-template-columns: 1fr; }
     .form-row--3 { grid-template-columns: 1fr 1fr; }
     .biz-cards { grid-template-columns: repeat(3, 1fr); }
@@ -836,6 +891,22 @@ select.form-control {
                 <div class="mobile-step-dot" data-dot="2"></div>
                 <div class="mobile-step-dot" data-dot="3"></div>
                 <div class="mobile-step-dot" data-dot="4"></div>
+            </div>
+            <div class="mobile-step-labels" id="mobileStepLabels" aria-hidden="true">
+                <span class="mobile-step-label active" data-label-step="1">Account</span>
+                <span class="mobile-step-label" data-label-step="2">Shop</span>
+                <span class="mobile-step-label" data-label-step="3">Business</span>
+                <span class="mobile-step-label" data-label-step="4">Payouts</span>
+            </div>
+
+            <div class="registration-context">
+                <div class="registration-context__icon">
+                    <i class="fa-solid fa-store"></i>
+                </div>
+                <div>
+                    <p class="registration-context__title">Create one seller profile for your account</p>
+                    <p class="registration-context__text">We use these details to create your shop, verify your business, and prepare payouts after approval.</p>
+                </div>
             </div>
 
             {{-- Form header --}}
@@ -1253,7 +1324,7 @@ select.form-control {
                     {{-- Terms --}}
                     <div class="form-row form-row--1" style="margin-top:6px;">
                         <div class="terms-row">
-                            <input type="checkbox" id="terms" required>
+                            <input type="checkbox" id="terms" name="terms" value="1" required>
                             <label for="terms">
                                 I have read and agree to the
                                 <a href="#" target="_blank">Terms &amp; Conditions</a>
@@ -1329,6 +1400,11 @@ function goToStep(target, skipValidation) {
         el.classList.remove('active', 'done');
         if (d === target)    el.classList.add('active');
         else if (d < target) el.classList.add('done');
+    });
+
+    document.querySelectorAll('#mobileStepLabels .mobile-step-label').forEach(function(el) {
+        var s = parseInt(el.getAttribute('data-label-step'));
+        el.classList.toggle('active', s === target);
     });
 
     currentStep = target;

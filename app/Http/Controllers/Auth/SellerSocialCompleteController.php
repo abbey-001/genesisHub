@@ -96,6 +96,7 @@ class SellerSocialCompleteController extends Controller
                     ['Not Included']
                 )),
             ],
+            'terms' => ['accepted'],
         ]);
 
         // ── Store uploaded files ──────────────────────────────────────────────
@@ -140,6 +141,8 @@ class SellerSocialCompleteController extends Controller
             'postal_code'         => $validated['postal_code'],
             'country'             => $validated['country'],
             'verification_status' => 'pending',
+            'is_verified'         => false,
+            'commission_rate'     => config('platform.commission_rate', 10),
         ]);
 
         // ── Link shop → seller ────────────────────────────────────────────────

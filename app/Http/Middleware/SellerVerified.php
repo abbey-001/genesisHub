@@ -51,7 +51,7 @@ class SellerVerified
         
         $status = $user->seller->verification_status;
       
-        if ($status !== 'verified') {
+        if (!$user->seller->is_verified) {
            auth()->guard('seller')->logout();
             $request->session()->regenerateToken();
 

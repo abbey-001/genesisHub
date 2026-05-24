@@ -97,6 +97,13 @@ html, body { height: 100%; font-family: 'Inter', sans-serif; background: #f3f5f6
 .mobile-step-dot { height: 4px; border-radius: 100px; background: #e0e4ea; flex: 1; transition: background .3s, flex .3s; }
 .mobile-step-dot.active { background: #714e32; flex: 2; }
 .mobile-step-dot.done { background: rgba(113,78,50,.4); }
+.mobile-step-labels { display: none; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: -18px 0 22px; }
+.mobile-step-label {
+    min-width: 0; padding: 7px 8px; border: 1px solid #e0e4ea; border-radius: 8px;
+    background: #fff; color: #6b7280; font-size: 11.5px; font-weight: 700;
+    text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.mobile-step-label.active { border-color: rgba(113,78,50,.28); background: rgba(113,78,50,.07); color: #714e32; }
 
 /* Step panels */
 .step-panel { display: none; }
@@ -179,6 +186,7 @@ select.form-control { cursor: pointer; background-image: url("data:image/svg+xml
 .social-account-banner__icon i { font-size: 16px; color: #16a34a; }
 .social-account-banner__text p { margin: 0; font-size: 13px; color: #166534; line-height: 1.5; }
 .social-account-banner__text strong { font-weight: 700; }
+.social-account-banner__email { overflow-wrap: anywhere; word-break: break-word; }
 
 .auth-foot { display: flex; flex-direction: column; gap: 10px; align-items: center; margin-top: 28px; }
 .auth-foot p { font-size: 13.5px; color: #555e68; margin: 0; }
@@ -186,8 +194,25 @@ select.form-control { cursor: pointer; background-image: url("data:image/svg+xml
 .auth-foot a:hover { color: #5a3d26; text-decoration: underline; }
 
 @media (max-width: 900px) { .auth-panel { flex: 0 0 38%; padding: 40px 36px; } .auth-form-side { padding: 48px 28px 80px; } }
-@media (max-width: 720px) { .auth-panel { display: none; } .auth-mobile-logo { display: block; } .mobile-steps { display: flex; } .auth-form-side { padding: 40px 20px 80px; } .auth-form-box { max-width: 100%; } .form-row--2 { grid-template-columns: 1fr; } .form-row--3 { grid-template-columns: 1fr 1fr; } }
-@media (max-width: 480px) { .biz-cards { grid-template-columns: 1fr; } .form-row--3 { grid-template-columns: 1fr; } .step-nav { flex-direction: column-reverse; } .btn-back, .btn-next, .btn-submit-final { width: 100%; justify-content: center; } }
+@media (max-width: 720px) {
+    .auth-panel { display: none; }
+    .auth-mobile-logo { display: block; margin-bottom: 24px; }
+    .mobile-steps { display: flex; margin-bottom: 24px; }
+    .mobile-step-labels { display: grid; }
+    .auth-form-side { padding: 28px 16px 72px; }
+    .auth-form-box { max-width: 100%; }
+    .form-header { margin-bottom: 20px; }
+    .form-header__title { font-size: 23px; }
+    .social-account-banner { align-items: flex-start; margin-bottom: 22px; padding: 14px; }
+    .form-row--2 { grid-template-columns: 1fr; }
+    .form-row--3 { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 480px) {
+    .biz-cards { grid-template-columns: 1fr; }
+    .form-row--3 { grid-template-columns: 1fr; }
+    .step-nav { flex-direction: column-reverse; }
+    .btn-back, .btn-next, .btn-submit-final { width: 100%; justify-content: center; }
+}
 </style>
 </head>
 <body>
@@ -292,23 +317,28 @@ select.form-control { cursor: pointer; background-image: url("data:image/svg+xml
                 <div class="mobile-step-dot" data-dot="3"></div>
                 <div class="mobile-step-dot" data-dot="4"></div>
             </div>
+            <div class="mobile-step-labels" id="mobileStepLabels" aria-hidden="true">
+                <span class="mobile-step-label active" data-label-step="2">Shop</span>
+                <span class="mobile-step-label" data-label-step="3">Business</span>
+                <span class="mobile-step-label" data-label-step="4">Payouts</span>
+            </div>
 
             {{-- Form header --}}
             <div class="form-header">
                 <p class="form-header__eyebrow" id="stepEyebrow">Step 1 of 3</p>
                 <h1 class="form-header__title" id="stepTitle">Shop Details</h1>
-                <p class="form-header__sub" id="stepSub">Set up your shop's public identity</p>
+                <p class="form-header__sub" id="stepSub">Set up the public shop customers will see.</p>
             </div>
 
             {{-- Social account confirmation banner --}}
             <div class="social-account-banner">
                 <div class="social-account-banner__icon">
-                    <i class="fa-solid fa-circle-check"></i>
+                    <i class="fa-solid fa-link"></i>
                 </div>
                 <div class="social-account-banner__text">
                     <p>
                         <strong>Account connected — {{ $user->name }}</strong><br>
-                        Your email <strong>{{ $user->email }}</strong> is verified. Just fill in your shop details below to finish.
+                        Your sign-in email <strong class="social-account-banner__email">{{ $user->email }}</strong> is already verified. Complete these shop, business, and payout details so the seller profile is attached to this account for review.
                     </p>
                 </div>
             </div>
@@ -600,7 +630,7 @@ select.form-control { cursor: pointer; background-image: url("data:image/svg+xml
     {{-- Terms --}}
     <div class="form-row form-row--1" style="margin-top:6px;">
         <div class="terms-row">
-            <input type="checkbox" id="terms" required>
+            <input type="checkbox" id="terms" name="terms" value="1" required>
             <label for="terms">
                 I have read and agree to the
                 <a href="#" target="_blank">Terms &amp; Conditions</a>
@@ -812,6 +842,11 @@ function goToStep(target, skipValidation) {
         el.classList.remove('active', 'done');
         if (d === target)    el.classList.add('active');
         else if (d < target) el.classList.add('done');
+    });
+
+    document.querySelectorAll('#mobileStepLabels .mobile-step-label').forEach(function(el) {
+        var s = parseInt(el.getAttribute('data-label-step'));
+        el.classList.toggle('active', s === target);
     });
 
     currentStep = target;

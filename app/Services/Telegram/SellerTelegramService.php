@@ -157,6 +157,31 @@ class SellerTelegramService extends BaseTelegramService
     }
 
     /**
+     * Payout request submitted from any channel.
+     */
+    public function notifyPayoutRequested(Seller $seller, Payout $payout): void
+    {
+        if (! $this->isReachable($seller)) return;
+
+        $text = "💳 <b>Payout Request Submitted</b>\n\n"
+              . "Reference: <code>#{$payout->id}</code>\n"
+              . "Amount: {$this->naira($payout->amount)}\n"
+              . "Net: <b>{$this->naira($payout->net_amount)}</b>\n"
+              . "Method: {$this->e($payout->payout_method_label)}\n\n"
+              . "Status: <b>Pending admin review</b>\n"
+              . "Available balance after request: <b>{$this->naira($seller->wallet?->balance ?? 0)}</b>";
+
+        $markup = [
+            'inline_keyboard' => [[
+                $this->urlButton('View Payout', url("/seller/payouts/{$payout->id}")),
+                $this->urlButton('Wallet', url('/seller/payouts')),
+            ]],
+        ];
+
+        $this->sendMessage($seller->telegram_chat_id, $text, $markup);
+    }
+
+    /**
      * Payout request approved (→ processing).
      */
     public function notifyPayoutApproved(Seller $seller, Payout $payout): void

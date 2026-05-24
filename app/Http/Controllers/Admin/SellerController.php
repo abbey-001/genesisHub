@@ -49,7 +49,7 @@ class SellerController extends Controller
 
         $stats = [
             'total'     => Seller::count(),
-            'verified'  => Seller::where('verification_status', 'verified')->count(),
+            'verified'  => Seller::where('is_verified', true)->count(),
             'pending'   => Seller::where('verification_status', 'pending')->count(),
             'rejected'  => Seller::where('verification_status', 'rejected')->count(),
             'suspended' => Seller::where('verification_status', 'suspended')->count(),
@@ -116,7 +116,10 @@ class SellerController extends Controller
     {
         DB::beginTransaction();
         try {
-            $seller->update(['verification_status' => 'verified']);
+            $seller->update([
+                'verification_status' => 'verified',
+                'is_verified'         => true,
+            ]);
 
             if ($seller->shop) {
                 $seller->shop->update(['is_active' => true]);
@@ -150,7 +153,10 @@ class SellerController extends Controller
         ]);
 
         try {
-            $seller->update(['verification_status' => 'rejected']);
+            $seller->update([
+                'verification_status' => 'rejected',
+                'is_verified'         => false,
+            ]);
 
             try {
                 $seller->user->notify(new SellerRejected($request->reason ?? ''));
@@ -178,7 +184,10 @@ class SellerController extends Controller
 
         DB::beginTransaction();
         try {
-            $seller->update(['verification_status' => 'suspended']);
+            $seller->update([
+                'verification_status' => 'suspended',
+                'is_verified'         => false,
+            ]);
 
             if ($seller->shop) {
                 $seller->shop->update(['is_active' => false]);
@@ -216,7 +225,10 @@ class SellerController extends Controller
     {
         DB::beginTransaction();
         try {
-            $seller->update(['verification_status' => 'verified']);
+            $seller->update([
+                'verification_status' => 'verified',
+                'is_verified'         => true,
+            ]);
 
             if ($seller->shop) {
                 $seller->shop->update(['is_active' => true]);
@@ -286,6 +298,21 @@ class SellerController extends Controller
         $seller->update(['commission_rate' => $request->commission_rate]);
 
         return back()->with('success', 'Commission rate updated to ' . $request->commission_rate . '%.');
+    }
+
+    /**
+     * Update the commission rate for every seller.
+     */
+    public function updateAllCommissions(Request $request)
+    {
+        $validated = $request->validate([
+            'commission_rate' => 'required|numeric|min:0|max:100',
+        ]);
+
+        $rate = round((float) $validated['commission_rate'], 2);
+        $count = Seller::query()->update(['commission_rate' => $rate]);
+
+        return back()->with('success', "Commission rate updated to {$rate}% for {$count} seller(s).");
     }
 
     /**

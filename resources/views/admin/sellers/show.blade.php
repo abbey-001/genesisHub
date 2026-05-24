@@ -41,7 +41,7 @@
 
                 @php
                     $statusMap = [
-                        'approved'  => ['bg-success',   'Verified Seller'],
+                        'verified'  => ['bg-success',   'Verified Seller'],
                         'pending'   => ['bg-warning',   'Pending Approval'],
                         'rejected'  => ['bg-danger',    'Rejected'],
                         'suspended' => ['bg-secondary', 'Suspended'],
@@ -58,7 +58,7 @@
                         <button class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#rejectModal">
                             <i data-lucide="x-circle" class="me-1"></i>Reject Application
                         </button>
-                    @elseif($seller->verification_status === 'approved')
+                    @elseif($seller->verification_status === 'verified')
                         <button class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#suspendModal">
                             <i data-lucide="pause-circle" class="me-1"></i>Suspend Seller
                         </button>
@@ -335,7 +335,7 @@
 @endif
 
 <!-- Suspend Modal -->
-@if($seller->verification_status === 'approved')
+@if($seller->verification_status === 'verified')
 <div class="modal fade" id="suspendModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">

@@ -46,17 +46,24 @@ Route::post('/forgot-password', function (\Illuminate\Http\Request $request) {
     $request->validate(['email' => ['required', 'email']]);
 
     $user = \App\Models\User::where('email', $request->email)
-                            ->where('user_type', 'customer')
+                            ->where(function ($query) {
+                                $query->where('user_type', 'customer')
+                                    ->orWhereNull('user_type');
+                            })
                             ->first();
 
     // Social-only — no password was ever set
-    if ($user && is_null($user->password)) {
+    if (! $user) {
+        return back()->with('status', __('passwords.sent'));
+    }
+
+    if (is_null($user->password)) {
         return back()->with('social_only', true);
     }
 
     // Hand off to Fortify's default broker (sends email or silently fails)
     $status = \Illuminate\Support\Facades\Password::broker()->sendResetLink(
-        $request->only('email')
+        ['email' => $user->email]
     );
 
     return back()->with('status', __($status));
