@@ -2,12 +2,14 @@
 
 [![Tests](https://github.com/abbey-001/genesisHub/actions/workflows/tests.yml/badge.svg)](https://github.com/abbey-001/genesisHub/actions/workflows/tests.yml)
 
-A multi-vendor e-commerce marketplace for the Nigerian market (fashion, electronics, phones, beauty, home goods). It connects **buyers**, **sellers**, **delivery riders** and **admins** in one Laravel application. **70 registered sellers.**
+A multi-vendor e-commerce marketplace for the Nigerian market (fashion, electronics, phones, beauty, home goods). It connects **buyers**, **sellers**, **delivery riders** and **admins** in one Laravel application. **38 registered sellers.**
 
 <!-- Add 3–4 screenshots here: storefront, seller dashboard, rider app, admin reports -->
 <!-- ![Storefront](docs/screenshots/storefront.png) -->
 
-**Live demo:** _add link_ · **Stack:** Laravel 12 · PHP 8.2 · MySQL · Blade · Fortify · Socialite · Scout
+> **Version 2:** this Laravel app is the original GenesisHub. It has since been rebuilt on Next.js and Supabase: [live demo](https://genesis-hub-nextjs.vercel.app) · [case study](https://github.com/abbey-001/abbey-001/blob/main/case-studies/genesishub.md)
+
+**Stack:** Laravel 12 · PHP 8.2 · MySQL · Blade · Fortify · Socialite · Scout
 
 ## Features
 
@@ -76,7 +78,7 @@ php artisan test
 Tests run on every push via GitHub Actions against MariaDB.
 
 ## Roadmap
-- Next.js storefront rewrite (in progress)
+- Next.js + Supabase rebuild: see the case study linked above
 - Browser tests for the checkout flow
 
 ---
