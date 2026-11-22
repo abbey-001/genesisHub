@@ -21,8 +21,6 @@
 /storage/*.key
 /storage/pail
 /storage/logs/
-/storage/app/
-/storage/framework/
 /vendor
 /seller/
 /zeomart-html/
