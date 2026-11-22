@@ -1,5 +1,7 @@
 # GenesisHub: Multi-Vendor Marketplace
 
+[![Tests](https://github.com/abbey-001/genesisHub/actions/workflows/tests.yml/badge.svg)](https://github.com/abbey-001/genesisHub/actions/workflows/tests.yml)
+
 A multi-vendor e-commerce marketplace for the Nigerian market (fashion, electronics, phones, beauty, home goods). It connects **buyers**, **sellers**, **delivery riders** and **admins** in one Laravel application. **70 registered sellers.**
 
 <!-- Add 3–4 screenshots here: storefront, seller dashboard, rider app, admin reports -->
@@ -39,21 +41,43 @@ A multi-vendor e-commerce marketplace for the Nigerian market (fashion, electron
 - Money flows (order → seller wallet → payout request → payout batch) are handled in a dedicated service (`app/Services/SellerWalletService.php`)
 - Telegram bot webhooks are split per audience (`TelegramWebhookController`, `SellerTelegramWebhookController`, `AdminTelegramWebhookController`)
 - Scheduled tasks run through `Api/CronController`
+- Payment webhooks verify the gateway signature and are idempotent: a retried `charge.success` never takes stock twice
+- Seller earnings are credited only on delivery, net of commission, held for a configurable period, then released by a daily job; a guard prevents crediting the same item twice
+- Wallet balance changes use row locks (`lockForUpdate`) inside transactions so concurrent payouts cannot overdraw a wallet
 
 ## Running locally
+Requires PHP 8.2, Composer, Node and MySQL/MariaDB.
 ```bash
 git clone https://github.com/abbey-001/genesisHub.git
 cd genesisHub
 composer install && npm install
 cp .env.example .env && php artisan key:generate
-# set DB_*, PAYSTACK_*, FLUTTERWAVE_* and TELEGRAM_* in .env
-php artisan migrate --seed
+# in .env: set DB_CONNECTION=mysql and DB_*, plus PAYSTACK_*, FLUTTERWAVE_*,
+# TELEGRAM_*_BOT_TOKEN and ALGOLIA_* (test/placeholder values are fine locally)
+php artisan migrate --seed   # builds the schema from database/schema/mysql-schema.sql
 npm run dev & php artisan serve
 ```
 
+## Testing
+Feature tests cover the parts of the system where money moves:
+
+| Area | What is verified |
+|---|---|
+| Payment webhooks | Forged signatures are rejected; a signed `charge.success` marks the order paid and reserves stock; retried webhooks are idempotent; `charge.failed` cancels the order |
+| Seller earnings | Commission is deducted; unpaid orders never credit sellers; no double-crediting; funds are held, then released exactly once |
+| Payouts | Only verified sellers; no overdrawing; one payout in progress at a time; failed payouts return funds and correct lifetime totals; status order is enforced |
+| Refunds | Refunds debit the seller; refunds larger than the balance overdraw it exactly once |
+| Coupons | Percent caps, fixed-amount limits, validity dates, minimum order, global and per-customer usage limits |
+
+```bash
+mysql -uroot -e "create database genesis_testing"
+php artisan test
+```
+Tests run on every push via GitHub Actions against MariaDB.
+
 ## Roadmap
 - Next.js storefront rewrite (in progress)
-- Feature tests for checkout, payments and payouts
+- Browser tests for the checkout flow
 
 ---
 Built by [Umar Awobajo](https://github.com/abbey-001)

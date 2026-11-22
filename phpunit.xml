@@ -23,13 +23,24 @@
         <env name="BCRYPT_ROUNDS" value="4"/>
         <env name="BROADCAST_CONNECTION" value="null"/>
         <env name="CACHE_STORE" value="array"/>
-        <env name="DB_CONNECTION" value="sqlite"/>
-        <env name="DB_DATABASE" value=":memory:"/>
+        <env name="DB_CONNECTION" value="mysql"/>
+        <env name="DB_DATABASE" value="genesis_testing"/>
         <env name="MAIL_MAILER" value="array"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
         <env name="SESSION_DRIVER" value="array"/>
         <env name="PULSE_ENABLED" value="false"/>
         <env name="TELESCOPE_ENABLED" value="false"/>
+        <env name="SCOUT_DRIVER" value="collection"/>
+        <env name="ALGOLIA_APP_ID" value="testing"/>
+        <env name="ALGOLIA_SECRET" value="testing"/>
+        <env name="TELEGRAM_BOT_TOKEN" value="testing"/>
+        <env name="TELEGRAM_SELLER_BOT_TOKEN" value="testing"/>
+        <env name="TELEGRAM_ADMIN_BOT_TOKEN" value="testing"/>
+        <env name="PAYSTACK_PUBLIC_KEY" value="pk_test_dummy"/>
+        <env name="PAYSTACK_SECRET_KEY" value="sk_test_dummy"/>
+        <env name="FLUTTERWAVE_PUBLIC_KEY" value="FLWPUBK_TEST-dummy"/>
+        <env name="FLUTTERWAVE_SECRET_KEY" value="FLWSECK_TEST-dummy"/>
+        <env name="FLUTTERWAVE_SECRET_HASH" value="flw_test_hash"/>
         <env name="NIGHTWATCH_ENABLED" value="false"/>
     </php>
 </phpunit>
