@@ -193,23 +193,24 @@ Route::prefix('payment')->name('payment.')->middleware('auth')->group(function (
     Route::post('/initialize', [PaymentController::class, 'initialize'])->name('initialize');
     
     // Callbacks (GET — browser redirect)
-Route::get('/paystack/callback',     [PaymentController::class, 'paystackCallback'])->name('paystack.callback');
-Route::get('/flutterwave/callback',  [PaymentController::class, 'flutterwaveCallback'])->name('flutterwave.callback');
+    Route::get('/paystack/callback',    [PaymentController::class, 'paystackCallback'])->name('paystack.callback');
+    Route::get('/flutterwave/callback', [PaymentController::class, 'flutterwaveCallback'])->name('flutterwave.callback');
 
-// Webhooks (POST — exclude from CSRF)
-Route::post('/paystack/webhook',     [PaymentController::class, 'paystackWebhook'])->name('paystack.webhook');
-Route::post('/flutterwave/webhook',  [PaymentController::class, 'flutterwaveWebhook'])->name('flutterwave.webhook');
-    
-    // Payment callback (after Paystack redirect)
-    // Route::get('/callback', [PaymentController::class, 'callback'])->name('callback');
-    
     // Success and failure pages
     Route::get('/success/{order}', [PaymentController::class, 'success'])->name('success');
     Route::get('/failed', [PaymentController::class, 'failed'])->name('failed');
 });
 
-// Webhook route (no auth middleware - Paystack will call this)
-Route::post('/payment/webhook', [PaymentController::class, 'webhook'])->name('payment.webhook');
+// Gateway webhooks: called server-to-server by Paystack / Flutterwave, so they
+// must NOT require a logged-in user. Each handler verifies the gateway signature
+// itself. They are also excluded from CSRF in bootstrap/app.php.
+Route::prefix('payment')->name('payment.')->group(function () {
+    Route::post('/paystack/webhook',    [PaymentController::class, 'paystackWebhook'])->name('paystack.webhook');
+    Route::post('/flutterwave/webhook', [PaymentController::class, 'flutterwaveWebhook'])->name('flutterwave.webhook');
+
+    // Legacy URL kept so a dashboard still pointing here keeps working.
+    Route::post('/webhook', [PaymentController::class, 'paystackWebhook'])->name('webhook');
+});
 
 // Contact
 Route::get('/contact', function () {

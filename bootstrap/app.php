@@ -29,6 +29,8 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->validateCsrfTokens(except: [
         'telegram/webhook',
         'payment/webhook',
+        'payment/paystack/webhook',
+        'payment/flutterwave/webhook',
         'telegram/seller/webhook',
         'telegram/admin/webhook',
     ]);

@@ -345,7 +345,7 @@ class PaymentController extends Controller
     {
         $signature = $request->header('x-paystack-signature');
 
-        if (!$signature || $signature !== hash_hmac('sha512', $request->getContent(), $this->paystackSecretKey)) {
+        if (!$signature || !hash_equals(hash_hmac('sha512', $request->getContent(), $this->paystackSecretKey), $signature)) {
             Log::warning('Paystack webhook: invalid signature', ['ip' => $request->ip()]);
             return response()->json(['message' => 'Invalid signature'], 401);
         }
