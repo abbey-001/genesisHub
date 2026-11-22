@@ -1,59 +1,59 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# GenesisHub: Multi-Vendor Marketplace
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+A multi-vendor e-commerce marketplace for the Nigerian market (fashion, electronics, phones, beauty, home goods). It connects **buyers**, **sellers**, **delivery riders** and **admins** in one Laravel application. **70 registered sellers.**
 
-## About Laravel
+<!-- Add 3–4 screenshots here: storefront, seller dashboard, rider app, admin reports -->
+<!-- ![Storefront](docs/screenshots/storefront.png) -->
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+**Live demo:** _add link_ · **Stack:** Laravel 12 · PHP 8.2 · MySQL · Blade · Fortify · Socialite · Scout
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## Features
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+**Buyers**
+- Product search with suggestions (Laravel Scout + full-text indexes), filtering, brand and category browsing, product comparison and quick view
+- Cart with coupons, wishlist, saved addresses
+- Checkout with **Paystack** and **Flutterwave**
+- Order tracking by order number with OTP verification, plus live delivery status
+- Reviews with images and "helpful" votes
+- Social login, two-factor authentication, login-activity history, email-change verification
 
-## Learning Laravel
+**Sellers**
+- Self-registration with email verification, shop setup, product and coupon management
+- Order fulfilment, review responses, sales dashboard
+- **Wallet and payouts** with commission handling and payout requests
+- Telegram notifications for new orders
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+**Riders (delivery)**
+- Rider registration and dashboard, delivery assignment and bundling, earnings and payout tracking
+- Delivery zones, shop-to-rider and rider-to-address delivery legs
+- Telegram notifications and broadcasts
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+**Admin**
+- Role and permission system
+- Seller, rider, customer, product, category and review management
+- Refunds, payout batches, delivery payouts, wallet oversight
+- Financial reports and dashboards, Telegram admin alerts
 
-## Laravel Sponsors
+## Architecture notes
+- Three separately authenticated user types (customer, seller, rider) plus admin, each with its own guard and dashboard
+- Money flows (order → seller wallet → payout request → payout batch) are handled in a dedicated service (`app/Services/SellerWalletService.php`)
+- Telegram bot webhooks are split per audience (`TelegramWebhookController`, `SellerTelegramWebhookController`, `AdminTelegramWebhookController`)
+- Scheduled tasks run through `Api/CronController`
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+## Running locally
+```bash
+git clone https://github.com/abbey-001/genesisHub.git
+cd genesisHub
+composer install && npm install
+cp .env.example .env && php artisan key:generate
+# set DB_*, PAYSTACK_*, FLUTTERWAVE_* and TELEGRAM_* in .env
+php artisan migrate --seed
+npm run dev & php artisan serve
+```
 
-### Premium Partners
+## Roadmap
+- Next.js storefront rewrite (in progress)
+- Feature tests for checkout, payments and payouts
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
-
-## Contributing
-
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
-
-## Code of Conduct
-
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
-
-## Security Vulnerabilities
-
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
-
-## License
-
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+---
+Built by [Umar Awobajo](https://github.com/abbey-001)
